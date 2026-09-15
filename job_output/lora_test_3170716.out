@@ -1,0 +1,56 @@
+==========================================
+Job ID:       3170716
+Node:         i33
+Date:         mar 15 sep 2026 16:27:29 CEST
+Python:       /home/busato/catastrophic_forgetting/.venv/bin/python
+==========================================
+Tue Sep 15 16:27:29 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:86:00.0 Off |                  Off |
+| N/A   37C    P0              34W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+PyTorch: 2.8.0+cu128
+CUDA available: True
+GPU: Tesla V100-PCIE-32GB
+Creating fixed test sets: 200 samples/task on cuda...
+[       0/2100] phase=initial                E_S=1.7029e+00 E_S'=2.0750e+00 E_S(W)=1.3014e+00 rho_W=0.5066 rho_w=0.0177 F_S=0.0000e+00
+[     100/2100] phase=pretrain_W_on_S        E_S=1.7028e+00 E_S'=2.0749e+00 E_S(W)=1.3014e+00 rho_W=0.5066 rho_w=0.0177 F_S=0.0000e+00
+[     200/2100] phase=pretrain_W_on_S        E_S=1.7028e+00 E_S'=2.0749e+00 E_S(W)=1.3014e+00 rho_W=0.5066 rho_w=0.0177 F_S=0.0000e+00
+[     300/2100] phase=pretrain_W_on_S        E_S=1.7028e+00 E_S'=2.0749e+00 E_S(W)=1.3013e+00 rho_W=0.5066 rho_w=0.0177 F_S=0.0000e+00
+[     400/2100] phase=pretrain_W_on_S        E_S=1.7027e+00 E_S'=2.0749e+00 E_S(W)=1.3013e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[     500/2100] phase=pretrain_W_on_S        E_S=1.7027e+00 E_S'=2.0749e+00 E_S(W)=1.3013e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[     600/2100] phase=pretrain_W_on_S        E_S=1.7027e+00 E_S'=2.0748e+00 E_S(W)=1.3012e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[     700/2100] phase=pretrain_W_on_S        E_S=1.7027e+00 E_S'=2.0748e+00 E_S(W)=1.3012e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[     800/2100] phase=pretrain_W_on_S        E_S=1.7026e+00 E_S'=2.0748e+00 E_S(W)=1.3012e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[     900/2100] phase=pretrain_W_on_S        E_S=1.7026e+00 E_S'=2.0748e+00 E_S(W)=1.3011e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1000/2100] phase=pretrain_W_on_S        E_S=1.7026e+00 E_S'=2.0747e+00 E_S(W)=1.3011e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1100/2100] phase=pretrain_W_on_S        E_S=1.7026e+00 E_S'=2.0747e+00 E_S(W)=1.3011e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1200/2100] phase=pretrain_W_on_S        E_S=1.7025e+00 E_S'=2.0747e+00 E_S(W)=1.3011e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1300/2100] phase=pretrain_W_on_S        E_S=1.7025e+00 E_S'=2.0747e+00 E_S(W)=1.3010e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1400/2100] phase=pretrain_W_on_S        E_S=1.7025e+00 E_S'=2.0747e+00 E_S(W)=1.3010e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1500/2100] phase=pretrain_W_on_S        E_S=1.7025e+00 E_S'=2.0746e+00 E_S(W)=1.3010e+00 rho_W=0.5067 rho_w=0.0177 F_S=0.0000e+00
+[    1600/2100] phase=pretrain_W_on_S        E_S=1.7024e+00 E_S'=2.0746e+00 E_S(W)=1.3009e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+[    1700/2100] phase=pretrain_W_on_S        E_S=1.7024e+00 E_S'=2.0746e+00 E_S(W)=1.3009e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+[    1800/2100] phase=pretrain_W_on_S        E_S=1.7024e+00 E_S'=2.0746e+00 E_S(W)=1.3009e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+[    1900/2100] phase=pretrain_W_on_S        E_S=1.7024e+00 E_S'=2.0746e+00 E_S(W)=1.3008e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+[    2000/2100] phase=pretrain_W_on_S        E_S=1.7023e+00 E_S'=2.0745e+00 E_S(W)=1.3008e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+[    2100/2100] phase=finetune_w_on_Sprime   E_S=1.7019e+00 E_S'=2.0741e+00 E_S(W)=1.3008e+00 rho_W=0.5068 rho_w=0.0177 F_S=0.0000e+00
+
+Training complete.
+Results saved to: results/training_dynamics/matched_two_stage/d200_T5_ks1_k1_a0p05_ap0p5_lrW0p001_lrw0p001_seed0
+Elapsed time: 5.98 s

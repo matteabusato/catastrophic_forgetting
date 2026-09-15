@@ -1,0 +1,51 @@
+{
+  "model": {
+    "P": 200,
+    "P_star": 200,
+    "T": 5,
+    "activation": "softmax",
+    "d": 200,
+    "dtype": "float32",
+    "init_std_W": 1.0,
+    "init_std_w": 1.0,
+    "kappa": 1.0,
+    "kappa_star": 1.0
+  },
+  "protocol": {
+    "alpha": 2.0,
+    "alpha_prime": 2.0,
+    "d": 200,
+    "experiment": "W_then_w",
+    "n_large": 80000,
+    "n_small": 400,
+    "p_finetune": 0.5,
+    "schedule_seed": 0,
+    "total_steps": 80400
+  },
+  "runtime": {
+    "cuda_available": true,
+    "cuda_device_name": "Tesla V100-PCIE-32GB",
+    "device": "cuda",
+    "torch_version": "2.8.0+cu128"
+  },
+  "seeds": {
+    "main_seed": 0,
+    "new_test_seed": 3000003,
+    "old_test_seed": 2000003,
+    "schedule_seed": 0,
+    "train_data_seed": 1000003
+  },
+  "training": {
+    "batch_size": 1,
+    "gradient_probe_size": 1,
+    "log_every": 500,
+    "lr_W": 0.001,
+    "lr_w": 0.001,
+    "momentum": 0.0,
+    "optimizer": "SGD",
+    "single_sample_sgd": true,
+    "teacher_noise_Delta": 0.0,
+    "test_size_per_task": 2000,
+    "weight_decay": 0.0
+  }
+}

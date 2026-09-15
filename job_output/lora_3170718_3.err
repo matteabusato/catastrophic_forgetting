@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/src/lora_dynamics/train.py", line 845, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/src/lora_dynamics/train.py", line 540, in main
+    run_dir = prepare_run_dir(args)
+  File "/home/busato/catastrophic_forgetting/src/lora_dynamics/train.py", line 269, in prepare_run_dir
+    raise FileExistsError(
+FileExistsError: Run directory already exists:
+  results/training_dynamics/matched_two_stage/d200_T5_ks1_k1_a2_ap2_lrW0p001_lrw0p001_seed0
+Use --overwrite or choose --run-name.
