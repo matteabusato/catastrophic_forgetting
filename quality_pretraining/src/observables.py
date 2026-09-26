@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from model import Student
+from src.model import Student
 
 
 def representation_error(S_student: Tensor, S_teacher: Tensor,) -> Tensor:

@@ -1,0 +1,5 @@
+{
+  "step": 10000,
+  "representation_error": 1.0056592789656338,
+  "generalization_error": 0.27424737520395986
+}

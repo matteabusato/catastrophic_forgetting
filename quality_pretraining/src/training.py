@@ -1,12 +1,13 @@
+from copy import deepcopy
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List, Optional
 
 import torch
 from torch import Tensor
 
-from data_model import Dataset, Teachers
-from model import Student
-from observables import (
+from src.data_model import Dataset, Teachers, teacher_forward
+from src.model import Student
+from src.observables import (
     representation_error,
     generalization_error,
     forgetting,
@@ -15,12 +16,42 @@ from observables import (
 
 
 @dataclass
+class PretrainingMetric:
+    step: int
+
+    step_over_d: float
+    step_over_d2: float
+
+    representation_error: float
+    generalization_error: float
+
+@dataclass
 class PretrainingCheckpoint:
     step: int
     W: Tensor
     representation_error: float
     generalization_error: float
+    optimizer_state: dict
+    generator_state: Tensor
 
+@dataclass
+class PretrainingRun:
+    metrics: List[PretrainingMetric]
+    checkpoints: List[PretrainingCheckpoint]
+
+    final_step: int
+    final_optimizer_state: dict
+    final_generator_state: Tensor
+
+@torch.no_grad()
+def _evaluate_pretraining(model: Student, test_data: Dataset, S_star: Tensor, step: int,) -> PretrainingMetric:
+    d = model.d
+
+    rep_error = representation_error(model.S_large, S_star,).item()
+    gen_error = generalization_error(model, test_data.X, test_data.y,).item()
+
+    return PretrainingMetric(step=step, step_over_d=step / d, step_over_d2=step / (d * d),
+        representation_error=rep_error, generalization_error=gen_error,)
 
 @dataclass
 class FineTuningMetric:
@@ -86,50 +117,91 @@ def _sample_example(dataset: Dataset, generator: torch.Generator,) -> tuple[Tens
     return (dataset.X[index], dataset.y[index],)
 
 
-def pretrain(model: Student, train_data: Dataset, test_data: Dataset, S_star: Tensor, n_steps: int,
-    lr: float, checkpoint_steps: List[int], seed: int = 0,) -> List[PretrainingCheckpoint]:
-    """
-    Pre-train the large-rank matrix W.
-    """
+def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_step: int, lr: float,
+    checkpoint_steps: List[int], eval_every: int, seed: int = 0, start_step: int = 0,
+    optimizer_state: Optional[dict] = None, generator_state: Optional[Tensor] = None, metric_callback: Optional[Callable[[PretrainingMetric], None]] = None,
+    checkpoint_callback: Optional[Callable[[PretrainingCheckpoint], None]] = None,) -> PretrainingRun:
 
-    checkpoint_steps = sorted(set(checkpoint_steps))
+    checkpoint_steps = sorted(set(checkpoint_steps) | {target_step})
+    checkpoint_steps = [step for step in checkpoint_steps if start_step <= step <= target_step]
 
     model.set_pretraining_mode()
     model.zero_grad(set_to_none=True)
 
     optimizer = torch.optim.SGD([model.W], lr=lr,)
 
-    generator = torch.Generator(device=train_data.X.device)
-    generator.manual_seed(seed)
+    if optimizer_state is not None:
+        optimizer.load_state_dict(optimizer_state)
 
+    generator = torch.Generator(device=model.W.device)
+
+    if generator_state is not None:
+        generator.set_state(generator_state.cpu())
+    else:
+        generator.manual_seed(seed)
+
+    metrics = []
     checkpoints = []
 
-    def save_checkpoint(step: int) -> None:
+    def record_metric(step: int,) -> PretrainingMetric:
+        metric = _evaluate_pretraining(model=model, test_data=test_data, S_star=S_star, step=step,)
+        metrics.append(metric)
+
+        if metric_callback is not None:
+            metric_callback(metric)
+
+        return metric
+
+    def save_checkpoint(step: int, metric: PretrainingMetric,) -> None:
+        checkpoint = PretrainingCheckpoint(step=step,
+            W=(model.W.detach().cpu().clone()),
+            representation_error=metric.representation_error,
+            generalization_error=metric.generalization_error,
+            optimizer_state=deepcopy(optimizer.state_dict()),
+            generator_state=(generator.get_state().cpu().clone()),)
+
+        checkpoints.append(checkpoint)
+
+        if checkpoint_callback is not None:
+            checkpoint_callback(checkpoint)
+
+
+    if start_step == 0:
+        metric = record_metric(step=0)
+
+        if 0 in checkpoint_steps:
+            save_checkpoint(step=0, metric=metric,)
+
+    for step in range(start_step + 1, target_step + 1,):
+        X = torch.randn(1, T, model.d, generator=generator, dtype=model.W.dtype, device=model.W.device,)
+
         with torch.no_grad():
-            rep_error = representation_error(model.S_large, S_star,).item()
-            gen_error = generalization_error(model, test_data.X, test_data.y,).item()
+            y = teacher_forward(X, S_star,)
 
-            checkpoints.append(PretrainingCheckpoint(step=step, W=(model.W.detach().cpu().clone()),
-                    representation_error=rep_error,generalization_error=gen_error,))
-
-
-    if 0 in checkpoint_steps:
-        save_checkpoint(step=0)
-
-    for step in range(1, n_steps + 1):
-        X_batch, y_batch = _sample_example(train_data, generator,)
         optimizer.zero_grad(set_to_none=True)
-        prediction = model(X_batch)
-        loss = mse_loss(prediction, y_batch,)
+        prediction = model(X)
+        loss = mse_loss(prediction, y,)
 
         loss.backward()
-
         optimizer.step()
 
-        if step in checkpoint_steps:
-            save_checkpoint(step)
+        is_eval_step = (step % eval_every == 0)
+        is_checkpoint_step = (step in checkpoint_steps)
 
-    return checkpoints
+        if (is_eval_step or is_checkpoint_step or step == target_step):
+            metric = record_metric(step=step)
+
+            if is_checkpoint_step:
+                save_checkpoint(step=step, metric=metric,)
+
+
+    return PretrainingRun(
+        metrics=metrics,
+        checkpoints=checkpoints,
+        final_step=target_step,
+        final_optimizer_state=deepcopy(optimizer.state_dict()),
+        final_generator_state=(generator.get_state().cpu().clone()),
+    )
 
 
 @torch.no_grad()

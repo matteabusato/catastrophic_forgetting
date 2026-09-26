@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 610, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 457, in main
+    pretraining_test = generate_dataset(
+TypeError: generate_dataset() got an unexpected keyword argument 'device'
