@@ -23,6 +23,14 @@ class Teachers:
         return (self.W_star @ self.W_star.T / torch.sqrt(torch.tensor(self.P_star, 
                 dtype=self.W_star.dtype, device=self.W_star.device,)))
 
+    @property
+    def S1_star(self) -> Tensor:
+        return self.S_star + torch.outer(self.w1_star, self.w1_star)
+
+    @property
+    def S2_star(self) -> Tensor:
+        return self.S_star + torch.outer(self.w2_star, self.w2_star)
+
 
 def sample_teachers(d: int, kappa_star: float, device: str = "cpu", dtype: torch.dtype = torch.float64,
     seed: int = 0,) -> Teachers:
@@ -61,16 +69,12 @@ def pretraining_teacher(X: Tensor, teachers: Teachers,) -> Tensor:
     return teacher_forward(X, teachers.S_star,)
 
 
-def task1_teacher(X: Tensor, teachers: Teachers,) -> Tensor:
-    S1 = teachers.S_star + torch.outer(teachers.w1_star, teachers.w1_star,)
-
-    return teacher_forward(X, S1)
+def task1_teacher(X: Tensor, teachers: Teachers) -> Tensor:
+    return teacher_forward(X, teachers.S1_star)
 
 
-def task2_teacher(X: Tensor, teachers: Teachers,) -> Tensor:
-    S2 = teachers.S_star + torch.outer(teachers.w2_star, teachers.w2_star,)
-
-    return teacher_forward(X, S2)
+def task2_teacher(X: Tensor, teachers: Teachers) -> Tensor:
+    return teacher_forward(X, teachers.S2_star)
 
 
 @dataclass
@@ -85,8 +89,9 @@ def sample_inputs(n_samples: int, T: int, d: int, device: str, dtype: torch.dtyp
     return torch.randn(n_samples, T, d, generator=generator, device=device, dtype=dtype,)
 
 
-def generate_dataset(n_samples: int, T: int, d: int, S_teacher: Tensor, seed: int,
-    device: str = "cpu", dtype: torch.dtype = torch.float64,) -> Dataset:
+def generate_dataset(n_samples: int, T: int, d: int, S_teacher: Tensor, seed: int,) -> Dataset:
+    device = S_teacher.device
+    dtype = S_teacher.dtype
 
     g = torch.Generator(device=device)
     g.manual_seed(seed)
