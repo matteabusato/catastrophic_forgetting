@@ -55,3 +55,42 @@ def residual_norm(S_student: Tensor, S_teacher: Tensor,) -> Tensor:
     """
 
     return torch.linalg.matrix_norm(S_teacher - S_student, ord="fro",)
+
+@torch.no_grad()
+def matrix_order_parameters(S_student: Tensor, S_teacher: Tensor,) -> dict[str, Tensor]:
+    """
+    Matrix order parameters for pre-training.
+
+    q      = Tr(S S*) / d
+    Q      = Tr(S^2) / d
+    Q_star = Tr((S*)^2) / d
+    normalized_overlap = q / sqrt(Q Q_star)
+    trace_S           = Tr(S) / d
+    trace_S_star      = Tr(S*) / d
+    trace_mismatch    = |Tr(S - S*)| / d
+    """
+
+    d = S_student.shape[0]
+
+    q = torch.sum(S_student * S_teacher) / d
+    Q = torch.sum(S_student * S_student) / d
+    Q_star = torch.sum(S_teacher * S_teacher) / d
+
+    eps = torch.finfo(S_student.dtype).eps
+
+    normalized_overlap = (q / torch.sqrt(Q * Q_star + eps))
+
+    trace_S = torch.trace(S_student) / d
+    trace_S_star = torch.trace(S_teacher) / d
+
+    trace_mismatch = torch.abs(torch.trace(S_student - S_teacher)) / d
+
+    return {
+        "q": q,
+        "Q": Q,
+        "Q_star": Q_star,
+        "normalized_overlap": normalized_overlap,
+        "trace_S": trace_S,
+        "trace_S_star": trace_S_star,
+        "trace_mismatch": trace_mismatch,
+    }
