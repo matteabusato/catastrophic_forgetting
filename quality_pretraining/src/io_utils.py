@@ -122,8 +122,18 @@ PRETRAINING_METRIC_FIELDS = [
     "step",
     "step_over_d",
     "step_over_d2",
+
     "representation_error",
     "generalization_error",
+
+    "q",
+    "Q",
+    "Q_star",
+    "normalized_overlap",
+
+    "trace_S",
+    "trace_S_star",
+    "trace_mismatch",
 ]
 
 
@@ -188,6 +198,27 @@ def append_pretraining_metric(
                 "generalization_error": (
                     metric.generalization_error
                 ),
+                "q": (
+                    metric.q
+                ),
+                "Q": (
+                    metric.Q
+                ),
+                "Q_star": (
+                    metric.Q_star
+                ),
+                "normalized_overlap": (
+                    metric.normalized_overlap
+                ),
+                "trace_S": (
+                    metric.trace_S
+                ),
+                "trace_S_star": (
+                    metric.trace_S_star
+                ),
+                "trace_mismatch": (
+                    metric.trace_mismatch
+                ),
             }
         )
 
@@ -251,13 +282,32 @@ def save_pretraining_checkpoint(
 
     metrics = {
         "step": checkpoint.step,
+
         "representation_error": (
             checkpoint.representation_error
         ),
+
         "generalization_error": (
             checkpoint.generalization_error
         ),
-    }
+
+        "q": checkpoint.q,
+        "Q": checkpoint.Q,
+        "Q_star": checkpoint.Q_star,
+
+        "normalized_overlap": (
+            checkpoint.normalized_overlap
+        ),
+
+        "trace_S": checkpoint.trace_S,
+        "trace_S_star": (
+            checkpoint.trace_S_star
+        ),
+
+        "trace_mismatch": (
+            checkpoint.trace_mismatch
+        ),
+    }   
 
     with open(
         ckpt_dir / "metrics.json",

@@ -10,6 +10,7 @@ from src.model import Student
 from src.observables import (
     representation_error,
     generalization_error,
+    matrix_order_parameters,
     forgetting,
     vector_overlap,
 )
@@ -25,12 +26,27 @@ class PretrainingMetric:
     representation_error: float
     generalization_error: float
 
+    q: float
+    Q: float
+    Q_star: float
+    normalized_overlap: float
+    
 @dataclass
 class PretrainingCheckpoint:
     step: int
     W: Tensor
     representation_error: float
     generalization_error: float
+
+    q: float
+    Q: float
+    Q_star: float
+    normalized_overlap: float
+
+    trace_S: float
+    trace_S_star: float
+    trace_mismatch: float
+
     optimizer_state: dict
     generator_state: Tensor
 
@@ -46,12 +62,17 @@ class PretrainingRun:
 @torch.no_grad()
 def _evaluate_pretraining(model: Student, test_data: Dataset, S_star: Tensor, step: int,) -> PretrainingMetric:
     d = model.d
+    S = model.S_large
 
-    rep_error = representation_error(model.S_large, S_star,).item()
+    rep_error = representation_error(S, S_star,).item()
     gen_error = generalization_error(model, test_data.X, test_data.y,).item()
+    order_params = matrix_order_parameters(S, S_star,)
 
     return PretrainingMetric(step=step, step_over_d=step / d, step_over_d2=step / (d * d),
-        representation_error=rep_error, generalization_error=gen_error,)
+        representation_error=rep_error, generalization_error=gen_error, q=order_params["q"].item(),
+        Q=order_params["Q"].item(), Q_star=order_params["Q_star"].item(), normalized_overlap=order_params["normalized_overlap"].item(),
+        trace_S=order_params["trace_S"].item(), trace_S_star=order_params["trace_S_star"].item(),
+        trace_mismatch=order_params["trace_mismatch"].item(),)
 
 @dataclass
 class FineTuningMetric:
@@ -160,6 +181,13 @@ def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_
             W=(model.W.detach().cpu().clone()),
             representation_error=metric.representation_error,
             generalization_error=metric.generalization_error,
+            q=metric.q,
+            Q=metric.Q,
+            Q_star=metric.Q_star,
+            normalized_overlap=metric.normalized_overlap,
+            trace_S=metric.trace_S,
+            trace_S_star=metric.trace_S_star,
+            trace_mismatch=metric.trace_mismatch,
             optimizer_state=deepcopy(optimizer.state_dict()),
             generator_state=(generator.get_state().cpu().clone()),)
 

@@ -560,9 +560,14 @@ def main():
         print(
             f"[checkpoint] "
             f"step={checkpoint.step:,} "
-            f"t/d²={checkpoint.step / (d*d):.3f} "
+            f"t/d={checkpoint.step / d:.3f} "
+            f"t/d²={checkpoint.step / (d*d):.5f} "
             f"eps_S={checkpoint.representation_error:.6e} "
-            f"eps_pre={checkpoint.generalization_error:.6e}"
+            f"eps_pre={checkpoint.generalization_error:.6e} "
+            f"q={checkpoint.q:.6e} "
+            f"Q={checkpoint.Q:.6e} "
+            f"Q*={checkpoint.Q_star:.6e} "
+            f"trace_err={checkpoint.trace_mismatch:.6e}"
         )
 
     # ========================================================
