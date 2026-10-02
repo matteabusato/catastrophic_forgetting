@@ -1,0 +1,62 @@
+
+======================================================
+Resume pre-training
+======================================================
+Run directory:       results/quality_pretraining/scaling_d200_T5
+Results root:        results/quality_pretraining
+Run name:            scaling_d200_T5
+
+d:                   200
+d^2:                 40000
+
+Latest checkpoint:   400000
+Additional d^2:      5
+Additional steps:    200000
+New target:          600000
+
+Start t/d^2:         10.0
+Target t/d^2:        15.0
+======================================================
+
+Tue Sep 29 11:27:39 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:D8:00.0 Off |                  Off |
+| N/A   29C    P0              22W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+
+Pre-training quality experiment
+--------------------------------
+run directory : results/quality_pretraining/scaling_d200_T5
+device        : cuda
+d             : 200
+T             : 5
+start step    : 400000
+target step   : 600000
+eval every    : 100
+checkpoints   : [400000, 600000]
+
+[checkpoint] step=600,000 t/d²=15.000 eps_S=2.121467e-01 eps_pre=5.883247e-02
+
+Finished at step 600,000.
+Metrics: results/quality_pretraining/scaling_d200_T5/metrics.csv
+
+======================================================
+Finished
+Run: scaling_d200_T5
+Reached step: 600000
+======================================================

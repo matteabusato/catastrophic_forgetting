@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 954, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 761, in main
+    raise FileExistsError(
+FileExistsError: results/task1_finetuning/scaling_d100_T5/step_0_task1_metrics.csv already exists. Use --overwrite if you really want to restart this trajectory.

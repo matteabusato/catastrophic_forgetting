@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 601, in <module>
-    main()
-  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 372, in main
-    if run_dir.exists():
-UnboundLocalError: local variable 'run_dir' referenced before assignment

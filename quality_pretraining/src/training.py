@@ -105,8 +105,11 @@ class FineTuningResult:
     history: List[FineTuningMetric]
 
 
-def mse_loss(prediction: Tensor, target: Tensor,) -> Tensor:
-    return torch.mean((prediction - target) ** 2)
+
+def mse_loss(prediction: Tensor, target: Tensor) -> Tensor:
+    squared_error = (prediction - target) ** 2
+
+    return (squared_error.sum(dim=(-2, -1)).mean() / prediction.shape[-1])
 
 
 def _sample_example(dataset: Dataset, generator: torch.Generator,) -> tuple[Tensor, Tensor]:

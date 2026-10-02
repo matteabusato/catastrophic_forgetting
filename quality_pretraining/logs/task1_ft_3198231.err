@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 896, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 410, in main
+    raise FileNotFoundError(
+FileNotFoundError: Pretraining run not found: /home/busato/catastrophic_forgetting/quality_pretraining/results/scaling_d100_T5

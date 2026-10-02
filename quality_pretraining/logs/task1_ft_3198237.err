@@ -1,0 +1,4 @@
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 583
+    pred = model(task1_test.X)
+    ^
+IndentationError: expected an indented block

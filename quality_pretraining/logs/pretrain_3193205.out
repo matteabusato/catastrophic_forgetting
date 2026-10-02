@@ -1,0 +1,66 @@
+============================================
+Pre-training quality
+============================================
+Job ID:        3193205
+Host:          i19
+Start time:    sam 26 sep 2026 16:19:37 CEST
+
+Run name:      d200_T5_k1_ks1_seed0
+Mode:          fresh
+Target steps:  40000
+
+d:             200
+T:             5
+kappa:         1.0
+kappa_star:    1.0
+learning rate: 0.05
+n_test:        1000
+
+Sat Sep 26 16:19:37 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:86:00.0 Off |                  Off |
+| N/A   38C    P0              27W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+
+Starting NEW pre-training trajectory.
+Removing existing run directory: results/quality_pretraining/d200_T5_k1_ks1_seed0
+
+Pre-training quality experiment
+--------------------------------
+run directory : results/quality_pretraining/d200_T5_k1_ks1_seed0
+device        : cuda
+d             : 200
+T             : 5
+start step    : 0
+target step   : 40000
+eval every    : 100
+checkpoints   : [0, 200, 10000, 20000, 40000]
+
+[checkpoint] step=0 t/d²=0.000 eps_S=1.006270e+00 eps_pre=2.743756e-01
+[checkpoint] step=200 t/d²=0.005 eps_S=1.003206e+00 eps_pre=2.737925e-01
+[checkpoint] step=10,000 t/d²=0.250 eps_S=8.687483e-01 eps_pre=2.439225e-01
+[checkpoint] step=20,000 t/d²=0.500 eps_S=7.543717e-01 eps_pre=2.167239e-01
+[checkpoint] step=40,000 t/d²=1.000 eps_S=5.759842e-01 eps_pre=1.689852e-01
+
+Finished at step 40,000.
+Metrics: results/quality_pretraining/d200_T5_k1_ks1_seed0/metrics.csv
+
+============================================
+Finished
+============================================
+End time: sam 26 sep 2026 16:21:01 CEST

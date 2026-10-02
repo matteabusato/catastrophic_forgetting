@@ -1,0 +1,1 @@
+/home/busato/catastrophic_forgetting/.venv/bin/python: Error while finding module specification for 'scripts/run_pretraining_quality.py' (ModuleNotFoundError: No module named 'scripts/run_pretraining_quality'). Try using 'scripts/run_pretraining_quality' instead of 'scripts/run_pretraining_quality.py' as the module name.

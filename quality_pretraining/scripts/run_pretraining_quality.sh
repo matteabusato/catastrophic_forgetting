@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=pretrain
+#SBATCH --job-name=resume_pretrain
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
@@ -9,114 +9,215 @@
 #SBATCH --mem=16G
 #SBATCH --time=6:00:00
 #SBATCH --array=0
-#SBATCH --output=logs/pretrain_%j.out
-#SBATCH --error=logs/pretrain_%j.err
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=mattea.busato@epfl.ch
+#SBATCH --output=logs/resume_pretrain_%j.out
+#SBATCH --error=logs/resume_pretrain_%j.err
 
 set -euo pipefail
 
-TARGET_STEPS=${1:?Please provide TARGET_STEPS}
-MODE=${2:-fresh}
 
-D=200
-T=5
+# ============================================================
+# Usage
+# ============================================================
+#
+# Default:
+#   resume for another 1 * d^2 steps
+#
+#   sbatch scripts/run_pretraining_quality.sh \
+#       results/scaling_d100_T5_...
+#
+#
+# Optionally specify how many additional d^2 units:
+#
+#   sbatch scripts/run_pretraining_quality.sh \
+#       results/scaling_d100_T5_... 3
+#
+# means:
+#
+#   new_target = latest_step + 3 * d^2
+#
+# ============================================================
 
-KAPPA=1.0
-KAPPA_STAR=1.0
 
-LR=0.001
+RUN_DIR=${1:?Please provide the run directory}
 
-N_TEST=1000
+EXTRA_D2=${2:-1}
 
-TEACHER_SEED=0
-STUDENT_SEED=1
-SGD_SEED=2
-TEST_SEED=11
 
-DTYPE="float64"
+# ============================================================
+# Project setup
+# ============================================================
 
-RUN_NAME="d200_T5_k1_ks1_seed0"
+cd /home/busato/catastrophic_forgetting/quality_pretraining
 
-cd "${SLURM_SUBMIT_DIR}"
-export PYTHONPATH="${SLURM_SUBMIT_DIR}:${PYTHONPATH:-}"
-
-mkdir -p logs
-
-module purge
-module load gcc/11.3.0
-module load python/3.10.4
-module load cuda/11.8.0
+export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
 
 source ../.venv/bin/activate
 
-
-echo "============================================"
-echo "Pre-training quality"
-echo "============================================"
-
-echo "Job ID:        ${SLURM_JOB_ID}"
-echo "Host:          $(hostname)"
-echo "Start time:    $(date)"
-
-echo
-echo "Run name:      ${RUN_NAME}"
-echo "Mode:          ${MODE}"
-echo "Target steps:  ${TARGET_STEPS}"
-
-echo
-echo "d:             ${D}"
-echo "T:             ${T}"
-echo "kappa:         ${KAPPA}"
-echo "kappa_star:    ${KAPPA_STAR}"
-echo "learning rate: ${LR}"
-echo "n_test:        ${N_TEST}"
-
-echo
-nvidia-smi || true
-echo
+mkdir -p logs
 
 
-if [ "${MODE}" = "fresh" ]; then
+# ============================================================
+# Normalize the run path
+# ============================================================
 
-    echo "Starting NEW pre-training trajectory."
+# Remove trailing slash if present
+RUN_DIR="${RUN_DIR%/}"
 
-    python -u scripts/run_pretraining_quality.py \
-        --run-name "${RUN_NAME}" \
-        --d "${D}" \
-        --T "${T}" \
-        --kappa "${KAPPA}" \
-        --kappa-star "${KAPPA_STAR}" \
-        --lr "${LR}" \
-        --dtype "${DTYPE}" \
-        --teacher-seed "${TEACHER_SEED}" \
-        --student-seed "${STUDENT_SEED}" \
-        --sgd-seed "${SGD_SEED}" \
-        --test-seed "${TEST_SEED}" \
-        --n-test "${N_TEST}" \
-        --target-steps "${TARGET_STEPS}" \
-        --device cuda
+# Example:
+#
+# RUN_DIR =
+# results/quality_pretraining/scaling_d100_T5_...
+#
+# becomes
+#
+# RESULTS_ROOT =
+# results/quality_pretraining
+#
+# RUN_NAME =
+# scaling_d100_T5_...
 
-elif [ "${MODE}" = "resume" ]; then
+RESULTS_ROOT=$(dirname "${RUN_DIR}")
+RUN_NAME=$(basename "${RUN_DIR}")
 
-    echo "Resuming existing pre-training trajectory."
 
-    python -u  scripts/run_pretraining_quality.py \
-        --run-name "${RUN_NAME}" \
-        --target-steps "${TARGET_STEPS}" \
-        --resume \
-        --device cuda
+CONFIG_PATH="${RUN_DIR}/config.json"
 
-else
 
-    echo "ERROR: MODE must be either 'fresh' or 'resume'."
+if [ ! -f "${CONFIG_PATH}" ]; then
+    echo "ERROR: config.json not found:"
+    echo "  ${CONFIG_PATH}"
     exit 1
-
 fi
 
-echo
-echo "============================================"
-echo "Finished"
-echo "============================================"
 
-echo "End time: $(date)"
+# ============================================================
+# Read d from config.json
+# ============================================================
+
+D=$(python - <<PY
+import json
+
+with open("${CONFIG_PATH}", "r") as f:
+    config = json.load(f)
+
+print(config["d"])
+PY
+)
+
+
+D2=$((D * D))
+
+
+# ============================================================
+# Find latest checkpoint
+# ============================================================
+
+LATEST_STEP=$(python - <<PY
+import json
+from pathlib import Path
+
+run_dir = Path("${RUN_DIR}")
+
+latest_file = run_dir / "latest.json"
+
+if latest_file.exists():
+
+    with open(latest_file, "r") as f:
+        latest = json.load(f)
+
+    print(int(latest["step"]))
+
+else:
+
+    checkpoint_root = run_dir / "checkpoints"
+
+    steps = []
+
+    if checkpoint_root.exists():
+        for p in checkpoint_root.iterdir():
+
+            if not p.is_dir():
+                continue
+
+            if not p.name.startswith("step_"):
+                continue
+
+            try:
+                steps.append(
+                    int(p.name.replace("step_", ""))
+                )
+            except ValueError:
+                pass
+
+    if not steps:
+        raise RuntimeError(
+            f"No checkpoints found in {checkpoint_root}"
+        )
+
+    print(max(steps))
+PY
+)
+
+
+# ============================================================
+# Decide new target
+# ============================================================
+
+ADDITIONAL_STEPS=$((EXTRA_D2 * D2))
+
+TARGET_STEPS=$((LATEST_STEP + ADDITIONAL_STEPS))
+
+
+# ============================================================
+# Print summary
+# ============================================================
+
+echo
+echo "======================================================"
+echo "Resume pre-training"
+echo "======================================================"
+echo "Run directory:       ${RUN_DIR}"
+echo "Results root:        ${RESULTS_ROOT}"
+echo "Run name:            ${RUN_NAME}"
+echo
+echo "d:                   ${D}"
+echo "d^2:                 ${D2}"
+echo
+echo "Latest checkpoint:   ${LATEST_STEP}"
+echo "Additional d^2:      ${EXTRA_D2}"
+echo "Additional steps:    ${ADDITIONAL_STEPS}"
+echo "New target:          ${TARGET_STEPS}"
+echo
+echo "Start t/d^2:         $(python - <<PY
+print(${LATEST_STEP} / (${D} ** 2))
+PY
+)"
+echo "Target t/d^2:        $(python - <<PY
+print(${TARGET_STEPS} / (${D} ** 2))
+PY
+)"
+echo "======================================================"
+echo
+
+
+nvidia-smi || true
+
+
+# ============================================================
+# Resume
+# ============================================================
+
+python -u -m scripts.run_pretraining_quality \
+    --results-root "${RESULTS_ROOT}" \
+    --run-name "${RUN_NAME}" \
+    --target-steps "${TARGET_STEPS}" \
+    --resume \
+    --device cuda
+
+
+echo
+echo "======================================================"
+echo "Finished"
+echo "Run: ${RUN_NAME}"
+echo "Reached step: ${TARGET_STEPS}"
+echo "======================================================"

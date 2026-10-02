@@ -1,0 +1,69 @@
+======================================================
+Pre-training scaling experiment
+======================================================
+SLURM job ID:       3198158
+SLURM array task:   2
+Host:               i25
+
+Run name:           scaling_d500_T5
+d:                  500
+d^2:                250000
+target steps:       2500000
+target / d^2:       10
+eval every:         250
+learning rate:      0.01
+teacher seed:       500
+student seed:       1
+SGD seed:           2
+test seed:          11
+n_test:             1000
+======================================================
+
+Tue Sep 29 10:52:27 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:86:00.0 Off |                  Off |
+| N/A   36C    P0              26W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+
+Pre-training quality experiment
+--------------------------------
+run directory : results/quality_pretraining/scaling_d500_T5
+device        : cuda
+d             : 500
+T             : 5
+start step    : 0
+target step   : 2500000
+eval every    : 250
+checkpoints   : [0, 500, 62500, 125000, 250000, 500000, 1250000, 2500000]
+
+[checkpoint] step=0 t/d²=0.000 eps_S=1.006364e+00 eps_pre=2.767316e-01
+[checkpoint] step=500 t/d²=0.002 eps_S=1.006111e+00 eps_pre=2.766735e-01
+[checkpoint] step=62,500 t/d²=0.250 eps_S=9.757850e-01 eps_pre=2.701981e-01
+[checkpoint] step=125,000 t/d²=0.500 eps_S=9.463156e-01 eps_pre=2.638224e-01
+[checkpoint] step=250,000 t/d²=1.000 eps_S=8.907161e-01 eps_pre=2.512711e-01
+[checkpoint] step=500,000 t/d²=2.000 eps_S=7.916675e-01 eps_pre=2.275346e-01
+[checkpoint] step=1,250,000 t/d²=5.000 eps_S=5.679538e-01 eps_pre=1.670645e-01
+[checkpoint] step=2,500,000 t/d²=10.000 eps_S=3.395291e-01 eps_pre=9.825666e-02
+
+Finished at step 2,500,000.
+Metrics: results/quality_pretraining/scaling_d500_T5/metrics.csv
+
+======================================================
+Finished scaling_d500_T5
+End time: mar 29 sep 2026 11:48:01 CEST
+======================================================
