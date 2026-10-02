@@ -141,6 +141,17 @@ def _sample_example(dataset: Dataset, generator: torch.Generator,) -> tuple[Tens
     return (dataset.X[index], dataset.y[index],)
 
 
+def _should_evaluate_pretraining(step: int, d: int, eval_every: int,) -> bool:
+    if step <= 10 * d:
+        interval = max(1, d // 20)
+    elif step <= d * d:
+        interval = max(1, d // 2)
+    else:
+        interval = eval_every
+
+    return step % interval == 0
+
+
 def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_step: int, lr: float,
     checkpoint_steps: List[int], eval_every: int, seed: int = 0, start_step: int = 0,
     optimizer_state: Optional[dict] = None, generator_state: Optional[Tensor] = None, metric_callback: Optional[Callable[[PretrainingMetric], None]] = None,
@@ -216,7 +227,7 @@ def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_
         loss.backward()
         optimizer.step()
 
-        is_eval_step = (step % eval_every == 0)
+        is_eval_step = _should_evaluate_pretraining(step=step, d=model.d, eval_every=eval_every,)
         is_checkpoint_step = (step in checkpoint_steps)
 
         if (is_eval_step or is_checkpoint_step or step == target_step):
