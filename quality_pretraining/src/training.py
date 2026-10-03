@@ -30,7 +30,10 @@ class PretrainingMetric:
     Q: float
     Q_star: float
     normalized_overlap: float
-    
+    trace_S: float
+    trace_S_star: float
+    trace_mismatch: float
+
 @dataclass
 class PretrainingCheckpoint:
     step: int

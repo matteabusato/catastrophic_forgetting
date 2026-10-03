@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 619, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 585, in main
+    pretrain(
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/training.py", line 212, in pretrain
+    metric = record_metric(step=0)
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/training.py", line 182, in record_metric
+    metric = _evaluate_pretraining(model=model, test_data=test_data, S_star=S_star, step=step,)
+  File "/home/busato/catastrophic_forgetting/.venv/lib64/python3.9/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/training.py", line 71, in _evaluate_pretraining
+    return PretrainingMetric(step=step, step_over_d=step / d, step_over_d2=step / (d * d),
+TypeError: __init__() got an unexpected keyword argument 'trace_S'

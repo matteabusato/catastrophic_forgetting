@@ -78,18 +78,26 @@ def default_checkpoint_steps(
         d,
         round(0.25 * d2),
         round(0.5 * d2),
-        d2,
-        2 * d2,
-        5 * d2,
-        10 * d2,
-        target_step,
     }
+
+    # Save W every d^2.
+    candidates.update(
+        range(
+            d2,
+            target_step + 1,
+            d2,
+        )
+    )
+
+    candidates.add(target_step)
 
     return sorted(
         step
         for step in candidates
         if 0 <= step <= target_step
     )
+
+
 def build_parser():
 
     parser = argparse.ArgumentParser(

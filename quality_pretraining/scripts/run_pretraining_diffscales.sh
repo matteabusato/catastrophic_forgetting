@@ -79,7 +79,7 @@ TEACHER_SEED=${TEACHER_SEEDS[$SLURM_ARRAY_TASK_ID]}
 D2=$((D * D))
 
 # Train each model until 2 d^2 samples / SGD updates.
-TARGET_STEPS=$((10 * D2))
+TARGET_STEPS=$((40 * D2))
 
 # Metrics every d/2.
 EVAL_EVERY=$((D / 2))
@@ -104,7 +104,7 @@ echo "Run name:           ${RUN_NAME}"
 echo "d:                  ${D}"
 echo "d^2:                ${D2}"
 echo "target steps:       ${TARGET_STEPS}"
-echo "target / d^2:       10"
+echo "target / d^2:       40"
 echo "eval every:         ${EVAL_EVERY}"
 echo "learning rate:      ${LR}"
 echo "teacher seed:       ${TEACHER_SEED}"

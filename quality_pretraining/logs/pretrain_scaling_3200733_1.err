@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 619, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 585, in main
+    pretrain(
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/training.py", line 210, in pretrain
+    metric = record_metric(step=0)
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/training.py", line 184, in record_metric
+    metric_callback(metric)
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_pretraining_quality.py", line 550, in metric_callback
+    append_pretraining_metric(
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/io_utils.py", line 214, in append_pretraining_metric
+    metric.trace_S
+AttributeError: 'PretrainingMetric' object has no attribute 'trace_S'
