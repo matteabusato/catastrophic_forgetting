@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 1059, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task1_finetuning.py", line 668, in main
+    loaded = load_pretraining_checkpoint(
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/src/io_utils.py", line 390, in load_pretraining_checkpoint
+    W = torch.load(
+  File "/home/busato/catastrophic_forgetting/.venv/lib64/python3.9/site-packages/torch/serialization.py", line 1484, in load
+    with _open_file_like(f, "rb") as opened_file:
+  File "/home/busato/catastrophic_forgetting/.venv/lib64/python3.9/site-packages/torch/serialization.py", line 759, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/home/busato/catastrophic_forgetting/.venv/lib64/python3.9/site-packages/torch/serialization.py", line 740, in __init__
+    super().__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: '/home/busato/catastrophic_forgetting/quality_pretraining/results/quality_pretraining/scaling_d100_T5/checkpoints/step_001600000/W.pt'

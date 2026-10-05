@@ -68,7 +68,7 @@ class Student(nn.Module):
         self.w.requires_grad_(True)
 
 
-    def reset_low_rank(self, scale: float = 1e-3, seed: int = 0,) -> None:
+    def reset_low_rank(self, scale: float = 1.0, seed: int = 0,) -> None:
         generator = torch.Generator(device=self.w.device)
         generator.manual_seed(seed)
 

@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import shutil
 from pathlib import Path
 
 import torch
@@ -14,6 +15,9 @@ from src.observables import (
     generalization_error,
     representation_error,
     vector_overlap,
+    rank_one_reconstruction_error,
+    rank_one_overlap,
+    matrix_cosine_overlap,
 )
 from src.training import mse_loss
 from src.io_utils import (
@@ -28,6 +32,7 @@ from src.io_utils import (
 # ============================================================
 
 def parse_dtype(name: str) -> torch.dtype:
+
     if name == "float64":
         return torch.float64
 
@@ -39,16 +44,33 @@ def parse_dtype(name: str) -> torch.dtype:
     )
 
 
+def float_tag(value: float) -> str:
+    return (
+        f"{value:g}"
+        .replace(".", "p")
+        .replace("-", "m")
+    )
+
+
 def default_checkpoint_steps(
     d: int,
     target_steps: int,
 ) -> list[int]:
+    """
+    Save a few physically meaningful points on the t/d scale.
+
+    The metric trajectory itself is evaluated more often;
+    these are the points where w is persisted.
+    """
 
     candidates = {
         max(1, d // 2),
         d,
         2 * d,
         5 * d,
+        10 * d,
+        20 * d,
+        50 * d,
         target_steps,
     }
 
@@ -57,6 +79,27 @@ def default_checkpoint_steps(
         for step in candidates
         if 0 < step <= target_steps
     )
+
+
+def should_evaluate(
+    step: int,
+    d: int,
+    eval_every: int,
+) -> bool:
+    """
+    Fine resolution during the expected O(d) Task-1 regime.
+    """
+
+    if step <= 5 * d:
+        interval = max(1, d // 20)
+
+    elif step <= 20 * d:
+        interval = max(1, d // 5)
+
+    else:
+        interval = eval_every
+
+    return step % interval == 0
 
 
 # ============================================================
@@ -73,57 +116,249 @@ def evaluate(
     finetune_step: int,
 ) -> dict:
 
-    rep_error = representation_error(
-        model.S_large,
-        teachers.S_star,
-    ).item()
-
-    pretraining_error = generalization_error(
-        model,
-        pretraining_test.X,
-        pretraining_test.y,
-    ).item()
-
-    task1_error = generalization_error(
-        model,
-        task1_test.X,
-        task1_test.y,
-    ).item()
-
-    overlap_w1 = vector_overlap(
-        model.w,
-        teachers.w1_star,
-    ).item()
-
-    w_norm = torch.linalg.vector_norm(
-        model.w
-    ).item()
-
     d = model.d
 
+    # --------------------------------------------------------
+    # Fixed large-rank representation
+    # --------------------------------------------------------
+
+    S_large = model.S_large
+    S_star = teachers.S_star
+
+    frozen_representation_error = (
+        representation_error(
+            S_large,
+            S_star,
+        ).item()
+    )
+
+    # --------------------------------------------------------
+    # Prediction errors
+    # --------------------------------------------------------
+
+    pretraining_error = (
+        generalization_error(
+            model,
+            pretraining_test.X,
+            pretraining_test.y,
+        ).item()
+    )
+
+    task1_error = (
+        generalization_error(
+            model,
+            task1_test.X,
+            task1_test.y,
+        ).item()
+    )
+
+    # --------------------------------------------------------
+    # Vector / adapter order parameters
+    # --------------------------------------------------------
+
+    signed_overlap_w1 = (
+        vector_overlap(
+            model.w,
+            teachers.w1_star,
+        ).item()
+    )
+
+    abs_overlap_w1 = abs(
+        signed_overlap_w1
+    )
+
+    squared_overlap_w1 = (
+        rank_one_overlap(
+            model.w,
+            teachers.w1_star,
+        ).item()
+    )
+
+    w_norm = (
+        torch.linalg.vector_norm(
+            model.w
+        ).item()
+    )
+
+    w_norm_sq_over_d = (
+        torch.sum(model.w ** 2) / d
+    ).item()
+
+    w1_star_norm = (
+        torch.linalg.vector_norm(
+            teachers.w1_star
+        ).item()
+    )
+
+    w1_star_norm_sq_over_d = (
+        torch.sum(
+            teachers.w1_star ** 2
+        ) / d
+    ).item()
+
+    adapter_reconstruction_error = (
+        rank_one_reconstruction_error(
+            model.w,
+            teachers.w1_star,
+        ).item()
+    )
+
+    # --------------------------------------------------------
+    # Full Task-1 matrix reconstruction
+    # --------------------------------------------------------
+
+    student_task1_matrix = (
+        S_large
+        + torch.outer(
+            model.w,
+            model.w,
+        )
+    )
+
+    teacher_task1_matrix = (
+        S_star
+        + torch.outer(
+            teachers.w1_star,
+            teachers.w1_star,
+        )
+    )
+
+    task1_matrix_error = (
+        representation_error(
+            student_task1_matrix,
+            teacher_task1_matrix,
+        ).item()
+    )
+
+    # --------------------------------------------------------
+    # Does the adapter compensate pretraining residual?
+    # --------------------------------------------------------
+
+    pretraining_residual = (
+        S_star - S_large
+    )
+
+    adapter_matrix = torch.outer(
+        model.w,
+        model.w,
+    )
+
+    residual_overlap = (
+        matrix_cosine_overlap(
+            adapter_matrix,
+            pretraining_residual,
+        ).item()
+    )
+
+    residual_norm = (
+        torch.linalg.matrix_norm(
+            pretraining_residual,
+            ord="fro",
+        ).item()
+    )
+
     return {
-        "pretraining_step": pretraining_step,
-        "finetune_step": finetune_step,
+        "pretraining_step": (
+            pretraining_step
+        ),
+
+        "pretraining_step_over_d2": (
+            pretraining_step / (d * d)
+        ),
+
+        "finetune_step": (
+            finetune_step
+        ),
+
         "finetune_step_over_d": (
             finetune_step / d
         ),
-        "representation_error": rep_error,
-        "pretraining_error": pretraining_error,
-        "task1_error": task1_error,
-        "overlap_w1": overlap_w1,
-        "w_norm": w_norm,
+
+        "frozen_representation_error": (
+            frozen_representation_error
+        ),
+
+        "pretraining_error": (
+            pretraining_error
+        ),
+
+        "task1_error": (
+            task1_error
+        ),
+
+        "signed_overlap_w1": (
+            signed_overlap_w1
+        ),
+
+        "abs_overlap_w1": (
+            abs_overlap_w1
+        ),
+
+        "squared_overlap_w1": (
+            squared_overlap_w1
+        ),
+
+        "w_norm": (
+            w_norm
+        ),
+
+        "w_norm_sq_over_d": (
+            w_norm_sq_over_d
+        ),
+
+        "w1_star_norm": (
+            w1_star_norm
+        ),
+
+        "w1_star_norm_sq_over_d": (
+            w1_star_norm_sq_over_d
+        ),
+
+        "adapter_reconstruction_error": (
+            adapter_reconstruction_error
+        ),
+
+        "task1_matrix_error": (
+            task1_matrix_error
+        ),
+
+        "residual_overlap": (
+            residual_overlap
+        ),
+
+        "residual_norm": (
+            residual_norm
+        ),
     }
 
 
 METRIC_FIELDS = [
     "pretraining_step",
+    "pretraining_step_over_d2",
+
     "finetune_step",
     "finetune_step_over_d",
-    "representation_error",
+
+    "frozen_representation_error",
+
     "pretraining_error",
     "task1_error",
-    "overlap_w1",
+
+    "signed_overlap_w1",
+    "abs_overlap_w1",
+    "squared_overlap_w1",
+
     "w_norm",
+    "w_norm_sq_over_d",
+
+    "w1_star_norm",
+    "w1_star_norm_sq_over_d",
+
+    "adapter_reconstruction_error",
+    "task1_matrix_error",
+
+    "residual_overlap",
+    "residual_norm",
 ]
 
 
@@ -132,7 +367,10 @@ def append_metric(
     metric: dict,
 ) -> None:
 
-    write_header = not metrics_path.exists()
+    write_header = (
+        not metrics_path.exists()
+        or metrics_path.stat().st_size == 0
+    )
 
     with open(
         metrics_path,
@@ -156,75 +394,42 @@ def append_metric(
 # ============================================================
 
 def save_finetuning_checkpoint(
-    output_root: Path,
-    pretraining_step: int,
+    checkpoint_root: Path,
     finetune_step: int,
     model: Student,
     optimizer,
     generator: torch.Generator,
     metric: dict,
-    config: dict,
-    overwrite: bool = False,
 ) -> Path:
 
-    checkpoint_name = (
-        f"step_{pretraining_step}"
-        f"_finetune{finetune_step}"
-    )
-
     checkpoint_dir = (
-        output_root
-        / checkpoint_name
+        checkpoint_root
+        / f"step_{finetune_step:09d}"
     )
-
-    if checkpoint_dir.exists() and not overwrite:
-        raise FileExistsError(
-            f"Checkpoint already exists: "
-            f"{checkpoint_dir}"
-        )
 
     checkpoint_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    # --------------------------------------------------------
-    # Model
-    # --------------------------------------------------------
-
     torch.save(
-        {
-            "W": (
-                model.W
-                .detach()
-                .cpu()
-                .clone()
-            ),
-            "w": (
-                model.w
-                .detach()
-                .cpu()
-                .clone()
-            ),
-        },
-        checkpoint_dir / "model.pt",
+        model.w
+        .detach()
+        .cpu()
+        .clone(),
+        checkpoint_dir / "w.pt",
     )
 
-    # --------------------------------------------------------
-    # Training state
-    # --------------------------------------------------------
-
     torch.save(
         {
-            "pretraining_step": (
-                pretraining_step
-            ),
             "finetune_step": (
                 finetune_step
             ),
+
             "optimizer_state": (
                 optimizer.state_dict()
             ),
+
             "generator_state": (
                 generator
                 .get_state()
@@ -236,30 +441,13 @@ def save_finetuning_checkpoint(
         / "training_state.pt",
     )
 
-    # --------------------------------------------------------
-    # Metrics
-    # --------------------------------------------------------
-
     with open(
         checkpoint_dir / "metrics.json",
         "w",
     ) as f:
+
         json.dump(
             metric,
-            f,
-            indent=2,
-        )
-
-    # --------------------------------------------------------
-    # Configuration
-    # --------------------------------------------------------
-
-    with open(
-        checkpoint_dir / "config.json",
-        "w",
-    ) as f:
-        json.dump(
-            config,
             f,
             indent=2,
         )
@@ -268,16 +456,16 @@ def save_finetuning_checkpoint(
 
 
 # ============================================================
-# Argument parser
+# Arguments
 # ============================================================
 
 def build_parser():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Fine-tune the rank-one adapter w "
-            "on Task 1 starting from a chosen "
-            "pre-training checkpoint."
+            "Fine-tune only the rank-one vector w "
+            "on Task 1 from a manually chosen "
+            "pretraining checkpoint."
         )
     )
 
@@ -285,45 +473,20 @@ def build_parser():
         "--pretrain-run-dir",
         type=str,
         required=True,
-        help=(
-            "Folder containing the pretraining "
-            "run and its checkpoints."
-        ),
     )
 
     parser.add_argument(
         "--pretrain-step",
         type=int,
         required=True,
-        help=(
-            "Pretraining checkpoint to load."
-        ),
-    )
-
-    parser.add_argument(
-        "--results-root",
-        type=str,
-        default="results/task1_finetuning",
     )
 
     parser.add_argument(
         "--target-steps",
         type=int,
-        default=None,
+        required=True,
         help=(
-            "Number of Task-1 SGD updates. "
-            "Default: 5*d."
-        ),
-    )
-
-    parser.add_argument(
-        "--checkpoint-steps",
-        type=int,
-        nargs="*",
-        default=None,
-        help=(
-            "Fine-tuning steps at which to save. "
-            "Default: d/2, d, 2d, 5d."
+            "Number of online Task-1 SGD updates."
         ),
     )
 
@@ -336,22 +499,11 @@ def build_parser():
     parser.add_argument(
         "--low-rank-init-scale",
         type=float,
-        default=1e-3,
-    )
-
-    parser.add_argument(
-        "--eval-every",
-        type=int,
-        default=None,
+        default=1.0,
         help=(
-            "Default: d/10."
+            "Std. dev. of w initialization. "
+            "Baseline is O(1), matching w*_1."
         ),
-    )
-
-    parser.add_argument(
-        "--n-test",
-        type=int,
-        default=None,
     )
 
     parser.add_argument(
@@ -370,6 +522,30 @@ def build_parser():
         "--task1-test-seed",
         type=int,
         default=31,
+    )
+
+    parser.add_argument(
+        "--n-test",
+        type=int,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--eval-every",
+        type=int,
+        default=None,
+        help=(
+            "Late-time evaluation interval. "
+            "Default: d/2. Early evaluation "
+            "is adaptive."
+        ),
+    )
+
+    parser.add_argument(
+        "--checkpoint-steps",
+        type=int,
+        nargs="*",
+        default=None,
     )
 
     parser.add_argument(
@@ -445,45 +621,42 @@ def main():
         )
     )
 
-    # --------------------------------------------------------
-    # Fine-tuning schedule
-    # --------------------------------------------------------
-
-    target_steps = (
-        args.target_steps
-        if args.target_steps is not None
-        else 5 * d
-    )
-
     eval_every = (
         args.eval_every
         if args.eval_every is not None
-        else max(1, d // 10)
+        else max(1, d // 2)
     )
 
+    # --------------------------------------------------------
+    # Checkpoint schedule
+    # --------------------------------------------------------
+
     if args.checkpoint_steps is None:
+
         checkpoint_steps = (
             default_checkpoint_steps(
                 d=d,
-                target_steps=target_steps,
+                target_steps=args.target_steps,
             )
         )
+
     else:
+
         checkpoint_steps = sorted(
             set(
                 args.checkpoint_steps
-                + [target_steps]
+                + [args.target_steps]
             )
         )
 
         checkpoint_steps = [
             step
             for step in checkpoint_steps
-            if 0 < step <= target_steps
+            if 0 < step <= args.target_steps
         ]
 
     # --------------------------------------------------------
-    # Load exactly the same teacher
+    # Teacher + selected W
     # --------------------------------------------------------
 
     teachers = load_teachers(
@@ -491,10 +664,6 @@ def main():
         device=device,
         dtype=dtype,
     )
-
-    # --------------------------------------------------------
-    # Load selected W checkpoint
-    # --------------------------------------------------------
 
     loaded = load_pretraining_checkpoint(
         run_dir=pretrain_run_dir,
@@ -505,8 +674,8 @@ def main():
 
     if loaded["step"] != args.pretrain_step:
         raise RuntimeError(
-            "Loaded checkpoint does not match "
-            "requested pretraining step."
+            "Loaded pretraining checkpoint "
+            "does not match requested step."
         )
 
     # --------------------------------------------------------
@@ -524,38 +693,30 @@ def main():
         loaded["W"]
     )
 
-    # First make sure W is the only active component
+    # Important:
+    # set_pretraining_mode() zeros w.
     model.set_pretraining_mode()
 
-    # Initialize adapter slightly away from zero.
-    #
-    # This is essential because the model contains w w^T:
-    # at exactly w = 0 the gradient with respect to w vanishes.
+    # Same random direction for a fixed seed;
+    # scale is controlled independently.
     model.reset_low_rank(
         scale=args.low_rank_init_scale,
         seed=args.w_init_seed,
     )
 
-    # Freeze W, train only w.
+    # Freeze W, activate w.
     model.set_finetuning_mode()
 
     # --------------------------------------------------------
-    # Task 1 teacher
+    # Task-1 teacher
     # --------------------------------------------------------
 
-    S_task1 = (
-        teachers.S_star
-        + torch.outer(
-            teachers.w1_star,
-            teachers.w1_star,
-        )
-    )
+    S_task1 = teachers.S1_star
 
     # --------------------------------------------------------
-    # Fixed evaluation datasets
+    # Fixed evaluation sets
     # --------------------------------------------------------
 
-    # Reuse the same pretraining test set definition.
     pretraining_test = generate_dataset(
         n_samples=n_test,
         T=T,
@@ -566,82 +727,19 @@ def main():
                 "test_seed",
                 11,
             )
-        )
+        ),
     )
 
-    # Fixed Task-1 held-out set.
     task1_test = generate_dataset(
         n_samples=n_test,
         T=T,
         d=d,
         S_teacher=S_task1,
-        seed=args.task1_test_seed
+        seed=args.task1_test_seed,
     )
 
-    with torch.no_grad():
-
-        pred = model(task1_test.X)
-        target = task1_test.y
-
-        diff2 = (pred - target) ** 2
-
-        print("===== TASK 1 ERROR DIAGNOSTICS =====")
-
-        print(
-            "elementwise MSE:",
-            diff2.mean().item()
-        )
-
-        print(
-            "mean ||error||_F^2 per sample:",
-            diff2.sum(dim=(-2, -1)).mean().item()
-        )
-
-        print(
-            "(1/d) mean ||error||_F^2:",
-            (
-                diff2
-                .sum(dim=(-2, -1))
-                .mean()
-                / d
-            ).item()
-        )
-
-        print(
-            "(1/(T*d)) mean ||error||_F^2:",
-            (
-                diff2
-                .sum(dim=(-2, -1))
-                .mean()
-                / (T * d)
-            ).item()
-        )
-
-        print(
-            "generalization_error():",
-            generalization_error(
-                model,
-                task1_test.X,
-                task1_test.y,
-            ).item()
-        )
-
-        print(
-            "||w1_star||:",
-            torch.linalg.vector_norm(
-                teachers.w1_star
-            ).item()
-        )
-
-        print(
-            "||w||:",
-            torch.linalg.vector_norm(
-                model.w
-            ).item()
-        )
-
     # --------------------------------------------------------
-    # Optimizer and online Task-1 sample stream
+    # Optimizer + online stream
     # --------------------------------------------------------
 
     optimizer = torch.optim.SGD(
@@ -658,44 +756,71 @@ def main():
     )
 
     # --------------------------------------------------------
-    # Output structure
+    # Output layout
     # --------------------------------------------------------
 
-    source_run_name = (
-        pretrain_run_dir.name
+    base_output_dir = Path(
+        "results"
+    ) / "quality_pretraining" / (
+        f"finetunetask1_d{d}_T{T}"
     )
 
-    output_root = (
-        Path(args.results_root)
-        / source_run_name
+    run_name = (
+        f"prestep_{args.pretrain_step}"
+        f"_lr{float_tag(args.lr)}"
+        f"_init{float_tag(args.low_rank_init_scale)}"
+        f"_wseed{args.w_init_seed}"
+        f"_sgdseed{args.sgd_seed}"
     )
 
-    output_root.mkdir(
+    run_dir = (
+        base_output_dir
+        / run_name
+    )
+
+    if run_dir.exists():
+
+        if args.overwrite:
+            shutil.rmtree(run_dir)
+
+        else:
+            raise FileExistsError(
+                f"Run already exists: {run_dir}\n"
+                f"Use --overwrite to replace it."
+            )
+
+    checkpoint_root = (
+        run_dir / "checkpoints"
+    )
+
+    checkpoint_root.mkdir(
         parents=True,
         exist_ok=True,
     )
 
     metrics_path = (
-        output_root
-        / (
-            f"step_{args.pretrain_step}"
-            f"_task1_metrics.csv"
-        )
+        run_dir / "metrics.csv"
     )
 
     config = {
-        "experiment": "task1_finetuning",
+        "experiment": (
+            "finetune_task1"
+        ),
 
         "source_pretrain_run": (
             str(pretrain_run_dir)
         ),
 
-        "source_pretrain_run_name": (
-            source_run_name
-        ),
-
         "pretraining_step": (
             args.pretrain_step
+        ),
+
+        "pretraining_step_over_d2": (
+            args.pretrain_step / (d * d)
+        ),
+
+        "source_pretraining_metrics": (
+            loaded["metrics"]
         ),
 
         "d": d,
@@ -726,88 +851,68 @@ def main():
 
         "n_test": n_test,
 
-        "target_steps": target_steps,
+        "target_steps": (
+            args.target_steps
+        ),
 
-        "eval_every": eval_every,
+        "target_steps_over_d": (
+            args.target_steps / d
+        ),
+
+        "eval_every": (
+            eval_every
+        ),
 
         "checkpoint_steps": (
             checkpoint_steps
         ),
     }
 
-    config_path = (
-        output_root
-        / (
-            f"step_{args.pretrain_step}"
-            f"_task1_config.json"
-        )
-    )
-
     with open(
-        config_path,
+        run_dir / "config.json",
         "w",
     ) as f:
+
         json.dump(
             config,
             f,
             indent=2,
         )
 
-    # Prevent accidentally mixing trajectories.
-    if metrics_path.exists():
-        if args.overwrite:
-            metrics_path.unlink()
-        else:
-            raise FileExistsError(
-                f"{metrics_path} already exists. "
-                f"Use --overwrite if you really "
-                f"want to restart this trajectory."
-            )
-
     # --------------------------------------------------------
     # Print setup
     # --------------------------------------------------------
 
     print()
+    print("==============================================")
     print("Task-1 fine-tuning")
-    print("----------------------------------------")
+    print("==============================================")
+    print(f"source pretrain : {pretrain_run_dir}")
+    print(f"pretrain step   : {args.pretrain_step:,}")
     print(
-        f"source run      : {pretrain_run_dir}"
+        f"pretrain t/d²   : "
+        f"{args.pretrain_step / (d*d):.6f}"
     )
+    print(f"d               : {d}")
+    print(f"T               : {T}")
+    print(f"device          : {device}")
+    print(f"lr              : {args.lr}")
     print(
-        f"pretrain step   : {args.pretrain_step}"
+        f"w init scale    : "
+        f"{args.low_rank_init_scale}"
     )
+    print(f"target steps    : {args.target_steps:,}")
     print(
-        f"d               : {d}"
+        f"target t/d      : "
+        f"{args.target_steps / d:.3f}"
     )
-    print(
-        f"T               : {T}"
-    )
-    print(
-        f"device          : {device}"
-    )
-    print(
-        f"learning rate   : {args.lr}"
-    )
-    print(
-        f"target steps    : {target_steps}"
-    )
-    print(
-        f"target / d      : {target_steps / d:.3f}"
-    )
-    print(
-        f"eval every      : {eval_every}"
-    )
-    print(
-        f"checkpoints     : {checkpoint_steps}"
-    )
-    print(
-        f"output root     : {output_root}"
-    )
+    print(f"eval every late : {eval_every}")
+    print(f"checkpoints     : {checkpoint_steps}")
+    print(f"run directory   : {run_dir}")
     print()
 
     # --------------------------------------------------------
-    # Step 0
+    # Initial evaluation
     # --------------------------------------------------------
 
     metric = evaluate(
@@ -826,21 +931,24 @@ def main():
 
     print(
         f"[step 0] "
-        f"task1={metric['task1_error']:.6e} "
-        f"pre={metric['pretraining_error']:.6e} "
-        f"overlap={metric['overlap_w1']:.6f}"
+        f"task1={metric['task1_error']:.6e} | "
+        f"|m1|={metric['abs_overlap_w1']:.6f} | "
+        f"m1²={metric['squared_overlap_w1']:.6f} | "
+        f"||w||²/d="
+        f"{metric['w_norm_sq_over_d']:.6f} | "
+        f"eps_adapter="
+        f"{metric['adapter_reconstruction_error']:.6e}"
     )
 
     # --------------------------------------------------------
-    # Task 1 online SGD
+    # Online Task-1 SGD
     # --------------------------------------------------------
 
     for step in range(
         1,
-        target_steps + 1,
+        args.target_steps + 1,
     ):
 
-        # Fresh Gaussian training sample.
         X = torch.randn(
             1,
             T,
@@ -851,6 +959,7 @@ def main():
         )
 
         with torch.no_grad():
+
             y = teacher_forward(
                 X,
                 S_task1,
@@ -868,11 +977,14 @@ def main():
         )
 
         loss.backward()
-
         optimizer.step()
 
         is_eval_step = (
-            step % eval_every == 0
+            should_evaluate(
+                step=step,
+                d=d,
+                eval_every=eval_every,
+            )
         )
 
         is_checkpoint_step = (
@@ -880,7 +992,7 @@ def main():
         )
 
         is_final_step = (
-            step == target_steps
+            step == args.target_steps
         )
 
         if (
@@ -894,9 +1006,7 @@ def main():
                 teachers=teachers,
                 pretraining_test=pretraining_test,
                 task1_test=task1_test,
-                pretraining_step=(
-                    args.pretrain_step
-                ),
+                pretraining_step=args.pretrain_step,
                 finetune_step=step,
             )
 
@@ -910,31 +1020,28 @@ def main():
                 f"t/d={step / d:7.3f} | "
                 f"task1="
                 f"{metric['task1_error']:.6e} | "
-                f"pre="
-                f"{metric['pretraining_error']:.6e} | "
-                f"overlap="
-                f"{metric['overlap_w1']:.6f}"
+                f"|m1|="
+                f"{metric['abs_overlap_w1']:.6f} | "
+                f"m1²="
+                f"{metric['squared_overlap_w1']:.6f} | "
+                f"||w||²/d="
+                f"{metric['w_norm_sq_over_d']:.6f} | "
+                f"eps_adapter="
+                f"{metric['adapter_reconstruction_error']:.6e} | "
+                f"residual_overlap="
+                f"{metric['residual_overlap']:.6f}"
             )
-
-        # ----------------------------------------------------
-        # Save checkpoint
-        # ----------------------------------------------------
 
         if is_checkpoint_step:
 
             checkpoint_dir = (
                 save_finetuning_checkpoint(
-                    output_root=output_root,
-                    pretraining_step=(
-                        args.pretrain_step
-                    ),
+                    checkpoint_root=checkpoint_root,
                     finetune_step=step,
                     model=model,
                     optimizer=optimizer,
                     generator=generator,
                     metric=metric,
-                    config=config,
-                    overwrite=args.overwrite,
                 )
             )
 
@@ -945,9 +1052,7 @@ def main():
 
     print()
     print("Task-1 fine-tuning completed.")
-    print(
-        f"Metrics: {metrics_path}"
-    )
+    print(f"Metrics: {metrics_path}")
 
 
 if __name__ == "__main__":

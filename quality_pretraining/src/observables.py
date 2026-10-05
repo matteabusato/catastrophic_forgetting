@@ -94,3 +94,50 @@ def matrix_order_parameters(S_student: Tensor, S_teacher: Tensor,) -> dict[str, 
         "trace_S_star": trace_S_star,
         "trace_mismatch": trace_mismatch,
     }
+
+@torch.no_grad()
+def rank_one_reconstruction_error(w: Tensor, w_star: Tensor,) -> Tensor:
+    """
+    Relative reconstruction error of the rank-one adapter:
+
+        ||w w^T - w* w*^T||_F^2
+        -------------------------
+             ||w* w*^T||_F^2
+    """
+
+    S_w = torch.outer(w, w)
+    S_w_star = torch.outer(w_star, w_star)
+
+    numerator = torch.sum((S_w - S_w_star) ** 2)
+    denominator = torch.sum(S_w_star ** 2)
+
+    return numerator / denominator
+
+
+@torch.no_grad()
+def rank_one_overlap(w: Tensor, w_star: Tensor, eps: float = 1e-12,) -> Tensor:
+    """
+    Sign-invariant normalized overlap between
+    w w^T and w* w*^T.
+    """
+
+    numerator = torch.dot(w, w_star,) ** 2
+    denominator = torch.sum(w ** 2) * torch.sum(w_star ** 2)
+
+    return numerator / (denominator + eps)
+
+
+@torch.no_grad()
+def matrix_cosine_overlap(A: Tensor, B: Tensor, eps: float = 1e-12,) -> Tensor:
+    """
+    Frobenius cosine overlap between two matrices:
+
+        <A, B>_F
+        ----------------
+        ||A||_F ||B||_F
+    """
+
+    numerator = torch.sum(A * B)
+    denominator = torch.linalg.matrix_norm(A, ord="fro",) * torch.linalg.matrix_norm(B, ord="fro",)
+
+    return numerator / (denominator + eps)

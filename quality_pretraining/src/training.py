@@ -295,7 +295,7 @@ def _train_low_rank_on_task(model: Student, train_data: Dataset, pretraining_tes
 
 def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: Dataset, task1_train: Dataset, task1_test: Dataset,
     task2_train: Dataset, task2_test: Dataset, teachers: Teachers, n_steps_task1: int,
-    n_steps_task2: int, lr: float, low_rank_init_scale: float = 1e-3, eval_every: int = 100,
+    n_steps_task2: int, lr: float, low_rank_init_scale: float = 1.0, eval_every: int = 100,
     seed: int = 0,) -> FineTuningResult:
     """
     Perform the sequential fine-tuning protocol:

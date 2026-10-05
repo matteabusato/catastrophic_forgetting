@@ -1,0 +1,400 @@
+
+======================================================
+Task-1 fine-tuning
+======================================================
+Pretraining run:   results/quality_pretraining/scaling_d100_T5
+Pretraining step:  0
+Target FT steps:   10000
+Learning rate:     0.01
+w init scale:      1.0
+======================================================
+
+Mon Oct  5 11:04:23 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:86:00.0 Off |                  Off |
+| N/A   29C    P0              24W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+
+==============================================
+Task-1 fine-tuning
+==============================================
+source pretrain : /home/busato/catastrophic_forgetting/quality_pretraining/results/quality_pretraining/scaling_d100_T5
+pretrain step   : 0
+pretrain t/d²   : 0.000000
+d               : 100
+T               : 5
+device          : cuda
+lr              : 0.01
+w init scale    : 1.0
+target steps    : 10,000
+target t/d      : 100.000
+eval every late : 50
+checkpoints     : [50, 100, 200, 500, 1000, 2000, 5000, 10000]
+run directory   : results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22
+
+[step 0] task1=3.938325e-01 | |m1|=0.094541 | m1²=0.008938 | ||w||²/d=1.022081 | eps_adapter=1.819527e+00
+[step        5] t/d=  0.050 | task1=3.937929e-01 | |m1|=0.094231 | m1²=0.008880 | ||w||²/d=1.021570 | eps_adapter=1.818807e+00 | residual_overlap=0.010500
+[step       10] t/d=  0.100 | task1=3.937018e-01 | |m1|=0.094291 | m1²=0.008891 | ||w||²/d=1.020488 | eps_adapter=1.817036e+00 | residual_overlap=0.010627
+[step       15] t/d=  0.150 | task1=3.936215e-01 | |m1|=0.094508 | m1²=0.008932 | ||w||²/d=1.019522 | eps_adapter=1.815400e+00 | residual_overlap=0.010631
+[step       20] t/d=  0.200 | task1=3.935854e-01 | |m1|=0.094452 | m1²=0.008921 | ||w||²/d=1.018861 | eps_adapter=1.814351e+00 | residual_overlap=0.010610
+[step       25] t/d=  0.250 | task1=3.934602e-01 | |m1|=0.094671 | m1²=0.008963 | ||w||²/d=1.017158 | eps_adapter=1.811529e+00 | residual_overlap=0.010546
+[step       30] t/d=  0.300 | task1=3.933984e-01 | |m1|=0.095083 | m1²=0.009041 | ||w||²/d=1.016450 | eps_adapter=1.810245e+00 | residual_overlap=0.010609
+[step       35] t/d=  0.350 | task1=3.932886e-01 | |m1|=0.095132 | m1²=0.009050 | ||w||²/d=1.014906 | eps_adapter=1.807744e+00 | residual_overlap=0.010617
+[step       40] t/d=  0.400 | task1=3.933257e-01 | |m1|=0.095024 | m1²=0.009030 | ||w||²/d=1.015248 | eps_adapter=1.808332e+00 | residual_overlap=0.010616
+[step       45] t/d=  0.450 | task1=3.933138e-01 | |m1|=0.095024 | m1²=0.009030 | ||w||²/d=1.015146 | eps_adapter=1.808167e+00 | residual_overlap=0.010637
+[step       50] t/d=  0.500 | task1=3.932324e-01 | |m1|=0.094711 | m1²=0.008970 | ||w||²/d=1.014338 | eps_adapter=1.806977e+00 | residual_overlap=0.010643
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000000050
+[step       55] t/d=  0.550 | task1=3.932139e-01 | |m1|=0.094840 | m1²=0.008995 | ||w||²/d=1.013903 | eps_adapter=1.806233e+00 | residual_overlap=0.010614
+[step       60] t/d=  0.600 | task1=3.931499e-01 | |m1|=0.095202 | m1²=0.009063 | ||w||²/d=1.013298 | eps_adapter=1.805137e+00 | residual_overlap=0.010685
+[step       65] t/d=  0.650 | task1=3.931384e-01 | |m1|=0.095012 | m1²=0.009027 | ||w||²/d=1.013143 | eps_adapter=1.804953e+00 | residual_overlap=0.010664
+[step       70] t/d=  0.700 | task1=3.931004e-01 | |m1|=0.094971 | m1²=0.009019 | ||w||²/d=1.012623 | eps_adapter=1.804133e+00 | residual_overlap=0.010675
+[step       75] t/d=  0.750 | task1=3.930356e-01 | |m1|=0.095018 | m1²=0.009028 | ||w||²/d=1.011736 | eps_adapter=1.802695e+00 | residual_overlap=0.010672
+[step       80] t/d=  0.800 | task1=3.929863e-01 | |m1|=0.094751 | m1²=0.008978 | ||w||²/d=1.011050 | eps_adapter=1.801686e+00 | residual_overlap=0.010714
+[step       85] t/d=  0.850 | task1=3.929011e-01 | |m1|=0.094724 | m1²=0.008973 | ||w||²/d=1.010231 | eps_adapter=1.800385e+00 | residual_overlap=0.010722
+[step       90] t/d=  0.900 | task1=3.927454e-01 | |m1|=0.094955 | m1²=0.009017 | ||w||²/d=1.008404 | eps_adapter=1.797384e+00 | residual_overlap=0.010813
+[step       95] t/d=  0.950 | task1=3.927544e-01 | |m1|=0.095050 | m1²=0.009035 | ||w||²/d=1.008276 | eps_adapter=1.797146e+00 | residual_overlap=0.010807
+[step      100] t/d=  1.000 | task1=3.927071e-01 | |m1|=0.095045 | m1²=0.009034 | ||w||²/d=1.007455 | eps_adapter=1.795838e+00 | residual_overlap=0.010782
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000000100
+[step      105] t/d=  1.050 | task1=3.926193e-01 | |m1|=0.095160 | m1²=0.009055 | ||w||²/d=1.006312 | eps_adapter=1.793975e+00 | residual_overlap=0.010820
+[step      110] t/d=  1.100 | task1=3.925506e-01 | |m1|=0.095265 | m1²=0.009076 | ||w||²/d=1.005528 | eps_adapter=1.792689e+00 | residual_overlap=0.010873
+[step      115] t/d=  1.150 | task1=3.924734e-01 | |m1|=0.095255 | m1²=0.009073 | ||w||²/d=1.004436 | eps_adapter=1.790954e+00 | residual_overlap=0.010864
+[step      120] t/d=  1.200 | task1=3.924512e-01 | |m1|=0.095041 | m1²=0.009033 | ||w||²/d=1.004099 | eps_adapter=1.790492e+00 | residual_overlap=0.010881
+[step      125] t/d=  1.250 | task1=3.922961e-01 | |m1|=0.095256 | m1²=0.009074 | ||w||²/d=1.002044 | eps_adapter=1.787152e+00 | residual_overlap=0.010856
+[step      130] t/d=  1.300 | task1=3.922325e-01 | |m1|=0.095417 | m1²=0.009104 | ||w||²/d=1.001442 | eps_adapter=1.786143e+00 | residual_overlap=0.010889
+[step      135] t/d=  1.350 | task1=3.921663e-01 | |m1|=0.095650 | m1²=0.009149 | ||w||²/d=1.000705 | eps_adapter=1.784894e+00 | residual_overlap=0.010946
+[step      140] t/d=  1.400 | task1=3.921704e-01 | |m1|=0.095568 | m1²=0.009133 | ||w||²/d=1.000766 | eps_adapter=1.785018e+00 | residual_overlap=0.010954
+[step      145] t/d=  1.450 | task1=3.921344e-01 | |m1|=0.095612 | m1²=0.009142 | ||w||²/d=1.000335 | eps_adapter=1.784321e+00 | residual_overlap=0.010946
+[step      150] t/d=  1.500 | task1=3.920743e-01 | |m1|=0.095580 | m1²=0.009136 | ||w||²/d=1.000011 | eps_adapter=1.783818e+00 | residual_overlap=0.011007
+[step      155] t/d=  1.550 | task1=3.920068e-01 | |m1|=0.095764 | m1²=0.009171 | ||w||²/d=0.999119 | eps_adapter=1.782343e+00 | residual_overlap=0.011001
+[step      160] t/d=  1.600 | task1=3.919060e-01 | |m1|=0.095839 | m1²=0.009185 | ||w||²/d=0.998047 | eps_adapter=1.780623e+00 | residual_overlap=0.011054
+[step      165] t/d=  1.650 | task1=3.919015e-01 | |m1|=0.095879 | m1²=0.009193 | ||w||²/d=0.998060 | eps_adapter=1.780628e+00 | residual_overlap=0.011098
+[step      170] t/d=  1.700 | task1=3.917526e-01 | |m1|=0.096040 | m1²=0.009224 | ||w||²/d=0.996731 | eps_adapter=1.778475e+00 | residual_overlap=0.011170
+[step      175] t/d=  1.750 | task1=3.917271e-01 | |m1|=0.096182 | m1²=0.009251 | ||w||²/d=0.996387 | eps_adapter=1.777883e+00 | residual_overlap=0.011129
+[step      180] t/d=  1.800 | task1=3.916612e-01 | |m1|=0.096054 | m1²=0.009226 | ||w||²/d=0.995387 | eps_adapter=1.776349e+00 | residual_overlap=0.011200
+[step      185] t/d=  1.850 | task1=3.916217e-01 | |m1|=0.095987 | m1²=0.009213 | ||w||²/d=0.994803 | eps_adapter=1.775452e+00 | residual_overlap=0.011212
+[step      190] t/d=  1.900 | task1=3.915465e-01 | |m1|=0.096183 | m1²=0.009251 | ||w||²/d=0.993887 | eps_adapter=1.773942e+00 | residual_overlap=0.011202
+[step      195] t/d=  1.950 | task1=3.914798e-01 | |m1|=0.096015 | m1²=0.009219 | ||w||²/d=0.992926 | eps_adapter=1.772489e+00 | residual_overlap=0.011196
+[step      200] t/d=  2.000 | task1=3.913618e-01 | |m1|=0.096420 | m1²=0.009297 | ||w||²/d=0.991869 | eps_adapter=1.770689e+00 | residual_overlap=0.011163
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000000200
+[step      205] t/d=  2.050 | task1=3.912658e-01 | |m1|=0.096644 | m1²=0.009340 | ||w||²/d=0.990577 | eps_adapter=1.768584e+00 | residual_overlap=0.011112
+[step      210] t/d=  2.100 | task1=3.912243e-01 | |m1|=0.096569 | m1²=0.009326 | ||w||²/d=0.990019 | eps_adapter=1.767735e+00 | residual_overlap=0.011175
+[step      215] t/d=  2.150 | task1=3.911677e-01 | |m1|=0.096981 | m1²=0.009405 | ||w||²/d=0.989449 | eps_adapter=1.766700e+00 | residual_overlap=0.011181
+[step      220] t/d=  2.200 | task1=3.910684e-01 | |m1|=0.096803 | m1²=0.009371 | ||w||²/d=0.988362 | eps_adapter=1.765060e+00 | residual_overlap=0.011237
+[step      225] t/d=  2.250 | task1=3.909825e-01 | |m1|=0.096925 | m1²=0.009394 | ||w||²/d=0.987321 | eps_adapter=1.763389e+00 | residual_overlap=0.011178
+[step      230] t/d=  2.300 | task1=3.908870e-01 | |m1|=0.096855 | m1²=0.009381 | ||w||²/d=0.986215 | eps_adapter=1.761686e+00 | residual_overlap=0.011189
+[step      235] t/d=  2.350 | task1=3.908218e-01 | |m1|=0.097016 | m1²=0.009412 | ||w||²/d=0.985277 | eps_adapter=1.760166e+00 | residual_overlap=0.011168
+[step      240] t/d=  2.400 | task1=3.907327e-01 | |m1|=0.097245 | m1²=0.009457 | ||w||²/d=0.984118 | eps_adapter=1.758282e+00 | residual_overlap=0.011184
+[step      245] t/d=  2.450 | task1=3.906080e-01 | |m1|=0.097244 | m1²=0.009456 | ||w||²/d=0.982389 | eps_adapter=1.755590e+00 | residual_overlap=0.011180
+[step      250] t/d=  2.500 | task1=3.905452e-01 | |m1|=0.097543 | m1²=0.009515 | ||w||²/d=0.981825 | eps_adapter=1.754612e+00 | residual_overlap=0.011181
+[step      255] t/d=  2.550 | task1=3.905037e-01 | |m1|=0.097631 | m1²=0.009532 | ||w||²/d=0.981317 | eps_adapter=1.753792e+00 | residual_overlap=0.011194
+[step      260] t/d=  2.600 | task1=3.903361e-01 | |m1|=0.098064 | m1²=0.009616 | ||w||²/d=0.979819 | eps_adapter=1.751318e+00 | residual_overlap=0.011395
+[step      265] t/d=  2.650 | task1=3.903128e-01 | |m1|=0.097995 | m1²=0.009603 | ||w||²/d=0.979540 | eps_adapter=1.750909e+00 | residual_overlap=0.011395
+[step      270] t/d=  2.700 | task1=3.902870e-01 | |m1|=0.097859 | m1²=0.009576 | ||w||²/d=0.979133 | eps_adapter=1.750325e+00 | residual_overlap=0.011381
+[step      275] t/d=  2.750 | task1=3.902400e-01 | |m1|=0.097589 | m1²=0.009524 | ||w||²/d=0.978660 | eps_adapter=1.749684e+00 | residual_overlap=0.011419
+[step      280] t/d=  2.800 | task1=3.901563e-01 | |m1|=0.097473 | m1²=0.009501 | ||w||²/d=0.977740 | eps_adapter=1.748300e+00 | residual_overlap=0.011506
+[step      285] t/d=  2.850 | task1=3.900697e-01 | |m1|=0.097385 | m1²=0.009484 | ||w||²/d=0.976627 | eps_adapter=1.746608e+00 | residual_overlap=0.011519
+[step      290] t/d=  2.900 | task1=3.899638e-01 | |m1|=0.097620 | m1²=0.009530 | ||w||²/d=0.975487 | eps_adapter=1.744766e+00 | residual_overlap=0.011476
+[step      295] t/d=  2.950 | task1=3.898654e-01 | |m1|=0.097812 | m1²=0.009567 | ||w||²/d=0.974385 | eps_adapter=1.743000e+00 | residual_overlap=0.011507
+[step      300] t/d=  3.000 | task1=3.897239e-01 | |m1|=0.097958 | m1²=0.009596 | ||w||²/d=0.972901 | eps_adapter=1.740664e+00 | residual_overlap=0.011545
+[step      305] t/d=  3.050 | task1=3.897061e-01 | |m1|=0.098215 | m1²=0.009646 | ||w||²/d=0.972776 | eps_adapter=1.740384e+00 | residual_overlap=0.011558
+[step      310] t/d=  3.100 | task1=3.896094e-01 | |m1|=0.098589 | m1²=0.009720 | ||w||²/d=0.971615 | eps_adapter=1.738470e+00 | residual_overlap=0.011567
+[step      315] t/d=  3.150 | task1=3.895634e-01 | |m1|=0.098580 | m1²=0.009718 | ||w||²/d=0.970924 | eps_adapter=1.737410e+00 | residual_overlap=0.011549
+[step      320] t/d=  3.200 | task1=3.895071e-01 | |m1|=0.098628 | m1²=0.009727 | ||w||²/d=0.970027 | eps_adapter=1.736017e+00 | residual_overlap=0.011553
+[step      325] t/d=  3.250 | task1=3.894302e-01 | |m1|=0.098768 | m1²=0.009755 | ||w||²/d=0.969149 | eps_adapter=1.734622e+00 | residual_overlap=0.011643
+[step      330] t/d=  3.300 | task1=3.893234e-01 | |m1|=0.098928 | m1²=0.009787 | ||w||²/d=0.967437 | eps_adapter=1.731944e+00 | residual_overlap=0.011615
+[step      335] t/d=  3.350 | task1=3.892768e-01 | |m1|=0.099204 | m1²=0.009841 | ||w||²/d=0.966946 | eps_adapter=1.731099e+00 | residual_overlap=0.011617
+[step      340] t/d=  3.400 | task1=3.891532e-01 | |m1|=0.099156 | m1²=0.009832 | ||w||²/d=0.965330 | eps_adapter=1.728644e+00 | residual_overlap=0.011604
+[step      345] t/d=  3.450 | task1=3.890932e-01 | |m1|=0.099872 | m1²=0.009974 | ||w||²/d=0.964675 | eps_adapter=1.727399e+00 | residual_overlap=0.011610
+[step      350] t/d=  3.500 | task1=3.890755e-01 | |m1|=0.099651 | m1²=0.009930 | ||w||²/d=0.964426 | eps_adapter=1.727095e+00 | residual_overlap=0.011595
+[step      355] t/d=  3.550 | task1=3.889988e-01 | |m1|=0.099612 | m1²=0.009922 | ||w||²/d=0.963786 | eps_adapter=1.726132e+00 | residual_overlap=0.011597
+[step      360] t/d=  3.600 | task1=3.889485e-01 | |m1|=0.099937 | m1²=0.009987 | ||w||²/d=0.963418 | eps_adapter=1.725459e+00 | residual_overlap=0.011634
+[step      365] t/d=  3.650 | task1=3.889288e-01 | |m1|=0.099981 | m1²=0.009996 | ||w||²/d=0.963211 | eps_adapter=1.725128e+00 | residual_overlap=0.011628
+[step      370] t/d=  3.700 | task1=3.888335e-01 | |m1|=0.100012 | m1²=0.010002 | ||w||²/d=0.961930 | eps_adapter=1.723168e+00 | residual_overlap=0.011573
+[step      375] t/d=  3.750 | task1=3.888159e-01 | |m1|=0.100080 | m1²=0.010016 | ||w||²/d=0.961551 | eps_adapter=1.722568e+00 | residual_overlap=0.011545
+[step      380] t/d=  3.800 | task1=3.887550e-01 | |m1|=0.100075 | m1²=0.010015 | ||w||²/d=0.960888 | eps_adapter=1.721562e+00 | residual_overlap=0.011591
+[step      385] t/d=  3.850 | task1=3.886964e-01 | |m1|=0.100240 | m1²=0.010048 | ||w||²/d=0.960402 | eps_adapter=1.720767e+00 | residual_overlap=0.011630
+[step      390] t/d=  3.900 | task1=3.886555e-01 | |m1|=0.100123 | m1²=0.010025 | ||w||²/d=0.959994 | eps_adapter=1.720187e+00 | residual_overlap=0.011603
+[step      395] t/d=  3.950 | task1=3.885868e-01 | |m1|=0.100023 | m1²=0.010005 | ||w||²/d=0.959241 | eps_adapter=1.719079e+00 | residual_overlap=0.011687
+[step      400] t/d=  4.000 | task1=3.884942e-01 | |m1|=0.100126 | m1²=0.010025 | ||w||²/d=0.958274 | eps_adapter=1.717577e+00 | residual_overlap=0.011758
+[step      405] t/d=  4.050 | task1=3.884407e-01 | |m1|=0.100019 | m1²=0.010004 | ||w||²/d=0.957828 | eps_adapter=1.716937e+00 | residual_overlap=0.011833
+[step      410] t/d=  4.100 | task1=3.883495e-01 | |m1|=0.100222 | m1²=0.010044 | ||w||²/d=0.956733 | eps_adapter=1.715211e+00 | residual_overlap=0.011811
+[step      415] t/d=  4.150 | task1=3.882964e-01 | |m1|=0.100225 | m1²=0.010045 | ||w||²/d=0.956243 | eps_adapter=1.714469e+00 | residual_overlap=0.011828
+[step      420] t/d=  4.200 | task1=3.882066e-01 | |m1|=0.100194 | m1²=0.010039 | ||w||²/d=0.955133 | eps_adapter=1.712801e+00 | residual_overlap=0.011861
+[step      425] t/d=  4.250 | task1=3.881289e-01 | |m1|=0.100390 | m1²=0.010078 | ||w||²/d=0.954200 | eps_adapter=1.711326e+00 | residual_overlap=0.011910
+[step      430] t/d=  4.300 | task1=3.880738e-01 | |m1|=0.100649 | m1²=0.010130 | ||w||²/d=0.953770 | eps_adapter=1.710589e+00 | residual_overlap=0.011927
+[step      435] t/d=  4.350 | task1=3.880049e-01 | |m1|=0.100917 | m1²=0.010184 | ||w||²/d=0.953145 | eps_adapter=1.709554e+00 | residual_overlap=0.012013
+[step      440] t/d=  4.400 | task1=3.879379e-01 | |m1|=0.100939 | m1²=0.010189 | ||w||²/d=0.952387 | eps_adapter=1.708404e+00 | residual_overlap=0.012013
+[step      445] t/d=  4.450 | task1=3.879338e-01 | |m1|=0.101084 | m1²=0.010218 | ||w||²/d=0.952090 | eps_adapter=1.707906e+00 | residual_overlap=0.012008
+[step      450] t/d=  4.500 | task1=3.879046e-01 | |m1|=0.101189 | m1²=0.010239 | ||w||²/d=0.951594 | eps_adapter=1.707125e+00 | residual_overlap=0.011988
+[step      455] t/d=  4.550 | task1=3.878624e-01 | |m1|=0.101187 | m1²=0.010239 | ||w||²/d=0.951071 | eps_adapter=1.706338e+00 | residual_overlap=0.012006
+[step      460] t/d=  4.600 | task1=3.877952e-01 | |m1|=0.101318 | m1²=0.010265 | ||w||²/d=0.950267 | eps_adapter=1.705086e+00 | residual_overlap=0.011975
+[step      465] t/d=  4.650 | task1=3.877281e-01 | |m1|=0.101608 | m1²=0.010324 | ||w||²/d=0.949738 | eps_adapter=1.704191e+00 | residual_overlap=0.012029
+[step      470] t/d=  4.700 | task1=3.876508e-01 | |m1|=0.101850 | m1²=0.010373 | ||w||²/d=0.948472 | eps_adapter=1.702207e+00 | residual_overlap=0.011996
+[step      475] t/d=  4.750 | task1=3.876118e-01 | |m1|=0.101687 | m1²=0.010340 | ||w||²/d=0.948154 | eps_adapter=1.701786e+00 | residual_overlap=0.012046
+[step      480] t/d=  4.800 | task1=3.875829e-01 | |m1|=0.101635 | m1²=0.010330 | ||w||²/d=0.947712 | eps_adapter=1.701143e+00 | residual_overlap=0.011997
+[step      485] t/d=  4.850 | task1=3.875612e-01 | |m1|=0.101427 | m1²=0.010287 | ||w||²/d=0.947398 | eps_adapter=1.700744e+00 | residual_overlap=0.012008
+[step      490] t/d=  4.900 | task1=3.874717e-01 | |m1|=0.101778 | m1²=0.010359 | ||w||²/d=0.946253 | eps_adapter=1.698910e+00 | residual_overlap=0.011961
+[step      495] t/d=  4.950 | task1=3.873814e-01 | |m1|=0.101614 | m1²=0.010325 | ||w||²/d=0.945182 | eps_adapter=1.697365e+00 | residual_overlap=0.012017
+[step      500] t/d=  5.000 | task1=3.872983e-01 | |m1|=0.101633 | m1²=0.010329 | ||w||²/d=0.944341 | eps_adapter=1.696103e+00 | residual_overlap=0.012106
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000000500
+[step      520] t/d=  5.200 | task1=3.870257e-01 | |m1|=0.102067 | m1²=0.010418 | ||w||²/d=0.941236 | eps_adapter=1.691326e+00 | residual_overlap=0.012207
+[step      540] t/d=  5.400 | task1=3.868317e-01 | |m1|=0.102389 | m1²=0.010484 | ||w||²/d=0.938747 | eps_adapter=1.687517e+00 | residual_overlap=0.012189
+[step      560] t/d=  5.600 | task1=3.864909e-01 | |m1|=0.102493 | m1²=0.010505 | ||w||²/d=0.935037 | eps_adapter=1.681989e+00 | residual_overlap=0.012385
+[step      580] t/d=  5.800 | task1=3.861345e-01 | |m1|=0.103166 | m1²=0.010643 | ||w||²/d=0.930577 | eps_adapter=1.675185e+00 | residual_overlap=0.012431
+[step      600] t/d=  6.000 | task1=3.858880e-01 | |m1|=0.103410 | m1²=0.010694 | ||w||²/d=0.926979 | eps_adapter=1.669822e+00 | residual_overlap=0.012351
+[step      620] t/d=  6.200 | task1=3.856545e-01 | |m1|=0.103519 | m1²=0.010716 | ||w||²/d=0.923990 | eps_adapter=1.665415e+00 | residual_overlap=0.012339
+[step      640] t/d=  6.400 | task1=3.854887e-01 | |m1|=0.103782 | m1²=0.010771 | ||w||²/d=0.922255 | eps_adapter=1.662795e+00 | residual_overlap=0.012407
+[step      660] t/d=  6.600 | task1=3.852131e-01 | |m1|=0.103366 | m1²=0.010685 | ||w||²/d=0.918540 | eps_adapter=1.657537e+00 | residual_overlap=0.012492
+[step      680] t/d=  6.800 | task1=3.850272e-01 | |m1|=0.103507 | m1²=0.010714 | ||w||²/d=0.916492 | eps_adapter=1.654521e+00 | residual_overlap=0.012577
+[step      700] t/d=  7.000 | task1=3.846515e-01 | |m1|=0.104355 | m1²=0.010890 | ||w||²/d=0.912102 | eps_adapter=1.647895e+00 | residual_overlap=0.012623
+[step      720] t/d=  7.200 | task1=3.843644e-01 | |m1|=0.104262 | m1²=0.010871 | ||w||²/d=0.908168 | eps_adapter=1.642273e+00 | residual_overlap=0.012692
+[step      740] t/d=  7.400 | task1=3.840534e-01 | |m1|=0.105214 | m1²=0.011070 | ||w||²/d=0.904410 | eps_adapter=1.636573e+00 | residual_overlap=0.012813
+[step      760] t/d=  7.600 | task1=3.836030e-01 | |m1|=0.105111 | m1²=0.011048 | ||w||²/d=0.898977 | eps_adapter=1.628876e+00 | residual_overlap=0.012952
+[step      780] t/d=  7.800 | task1=3.833521e-01 | |m1|=0.106071 | m1²=0.011251 | ||w||²/d=0.896013 | eps_adapter=1.624352e+00 | residual_overlap=0.013074
+[step      800] t/d=  8.000 | task1=3.830913e-01 | |m1|=0.106456 | m1²=0.011333 | ||w||²/d=0.892624 | eps_adapter=1.619440e+00 | residual_overlap=0.013149
+[step      820] t/d=  8.200 | task1=3.827714e-01 | |m1|=0.106512 | m1²=0.011345 | ||w||²/d=0.889060 | eps_adapter=1.614412e+00 | residual_overlap=0.013334
+[step      840] t/d=  8.400 | task1=3.825211e-01 | |m1|=0.106985 | m1²=0.011446 | ||w||²/d=0.886230 | eps_adapter=1.610290e+00 | residual_overlap=0.013385
+[step      860] t/d=  8.600 | task1=3.821294e-01 | |m1|=0.107674 | m1²=0.011594 | ||w||²/d=0.881927 | eps_adapter=1.604057e+00 | residual_overlap=0.013470
+[step      880] t/d=  8.800 | task1=3.818820e-01 | |m1|=0.108575 | m1²=0.011789 | ||w||²/d=0.879040 | eps_adapter=1.599741e+00 | residual_overlap=0.013613
+[step      900] t/d=  9.000 | task1=3.817384e-01 | |m1|=0.109156 | m1²=0.011915 | ||w||²/d=0.876910 | eps_adapter=1.596596e+00 | residual_overlap=0.013544
+[step      920] t/d=  9.200 | task1=3.814658e-01 | |m1|=0.109369 | m1²=0.011962 | ||w||²/d=0.873591 | eps_adapter=1.591945e+00 | residual_overlap=0.013745
+[step      940] t/d=  9.400 | task1=3.812937e-01 | |m1|=0.109783 | m1²=0.012052 | ||w||²/d=0.871429 | eps_adapter=1.588831e+00 | residual_overlap=0.013761
+[step      960] t/d=  9.600 | task1=3.810431e-01 | |m1|=0.110487 | m1²=0.012207 | ||w||²/d=0.867924 | eps_adapter=1.583787e+00 | residual_overlap=0.013934
+[step      980] t/d=  9.800 | task1=3.809599e-01 | |m1|=0.110516 | m1²=0.012214 | ||w||²/d=0.866669 | eps_adapter=1.582063e+00 | residual_overlap=0.013890
+[step     1000] t/d= 10.000 | task1=3.806804e-01 | |m1|=0.110400 | m1²=0.012188 | ||w||²/d=0.862831 | eps_adapter=1.576876e+00 | residual_overlap=0.013836
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000001000
+[step     1020] t/d= 10.200 | task1=3.805227e-01 | |m1|=0.110922 | m1²=0.012304 | ||w||²/d=0.861192 | eps_adapter=1.574473e+00 | residual_overlap=0.013871
+[step     1040] t/d= 10.400 | task1=3.802850e-01 | |m1|=0.111239 | m1²=0.012374 | ||w||²/d=0.857869 | eps_adapter=1.569867e+00 | residual_overlap=0.013933
+[step     1060] t/d= 10.600 | task1=3.799840e-01 | |m1|=0.111708 | m1²=0.012479 | ||w||²/d=0.854770 | eps_adapter=1.565529e+00 | residual_overlap=0.014014
+[step     1080] t/d= 10.800 | task1=3.797567e-01 | |m1|=0.111968 | m1²=0.012537 | ||w||²/d=0.852234 | eps_adapter=1.562033e+00 | residual_overlap=0.014068
+[step     1100] t/d= 11.000 | task1=3.796056e-01 | |m1|=0.112453 | m1²=0.012646 | ||w||²/d=0.850505 | eps_adapter=1.559550e+00 | residual_overlap=0.014173
+[step     1120] t/d= 11.200 | task1=3.794243e-01 | |m1|=0.113680 | m1²=0.012923 | ||w||²/d=0.848378 | eps_adapter=1.556286e+00 | residual_overlap=0.014240
+[step     1140] t/d= 11.400 | task1=3.790973e-01 | |m1|=0.113529 | m1²=0.012889 | ||w||²/d=0.843845 | eps_adapter=1.550305e+00 | residual_overlap=0.014307
+[step     1160] t/d= 11.600 | task1=3.789127e-01 | |m1|=0.114382 | m1²=0.013083 | ||w||²/d=0.841598 | eps_adapter=1.547034e+00 | residual_overlap=0.014381
+[step     1180] t/d= 11.800 | task1=3.787090e-01 | |m1|=0.115083 | m1²=0.013244 | ||w||²/d=0.839249 | eps_adapter=1.543688e+00 | residual_overlap=0.014461
+[step     1200] t/d= 12.000 | task1=3.785728e-01 | |m1|=0.115859 | m1²=0.013423 | ||w||²/d=0.837188 | eps_adapter=1.540703e+00 | residual_overlap=0.014479
+[step     1220] t/d= 12.200 | task1=3.784860e-01 | |m1|=0.116387 | m1²=0.013546 | ||w||²/d=0.836043 | eps_adapter=1.539014e+00 | residual_overlap=0.014606
+[step     1240] t/d= 12.400 | task1=3.783294e-01 | |m1|=0.117437 | m1²=0.013791 | ||w||²/d=0.834275 | eps_adapter=1.536328e+00 | residual_overlap=0.014675
+[step     1260] t/d= 12.600 | task1=3.780532e-01 | |m1|=0.117921 | m1²=0.013905 | ||w||²/d=0.830746 | eps_adapter=1.531545e+00 | residual_overlap=0.014790
+[step     1280] t/d= 12.800 | task1=3.778269e-01 | |m1|=0.119026 | m1²=0.014167 | ||w||²/d=0.827878 | eps_adapter=1.527422e+00 | residual_overlap=0.014770
+[step     1300] t/d= 13.000 | task1=3.775718e-01 | |m1|=0.119145 | m1²=0.014195 | ||w||²/d=0.824615 | eps_adapter=1.523148e+00 | residual_overlap=0.014842
+[step     1320] t/d= 13.200 | task1=3.774635e-01 | |m1|=0.119568 | m1²=0.014296 | ||w||²/d=0.823222 | eps_adapter=1.521198e+00 | residual_overlap=0.014990
+[step     1340] t/d= 13.400 | task1=3.772579e-01 | |m1|=0.120963 | m1²=0.014632 | ||w||²/d=0.820843 | eps_adapter=1.517637e+00 | residual_overlap=0.015083
+[step     1360] t/d= 13.600 | task1=3.770941e-01 | |m1|=0.121329 | m1²=0.014721 | ||w||²/d=0.818684 | eps_adapter=1.514730e+00 | residual_overlap=0.015068
+[step     1380] t/d= 13.800 | task1=3.769050e-01 | |m1|=0.122864 | m1²=0.015096 | ||w||²/d=0.816520 | eps_adapter=1.511410e+00 | residual_overlap=0.015086
+[step     1400] t/d= 14.000 | task1=3.766026e-01 | |m1|=0.123159 | m1²=0.015168 | ||w||²/d=0.812669 | eps_adapter=1.506387e+00 | residual_overlap=0.015101
+[step     1420] t/d= 14.200 | task1=3.762840e-01 | |m1|=0.123230 | m1²=0.015186 | ||w||²/d=0.809073 | eps_adapter=1.501794e+00 | residual_overlap=0.015253
+[step     1440] t/d= 14.400 | task1=3.760569e-01 | |m1|=0.123519 | m1²=0.015257 | ||w||²/d=0.806385 | eps_adapter=1.498289e+00 | residual_overlap=0.015284
+[step     1460] t/d= 14.600 | task1=3.759001e-01 | |m1|=0.123308 | m1²=0.015205 | ||w||²/d=0.804205 | eps_adapter=1.495614e+00 | residual_overlap=0.015362
+[step     1480] t/d= 14.800 | task1=3.757636e-01 | |m1|=0.123719 | m1²=0.015306 | ||w||²/d=0.802072 | eps_adapter=1.492786e+00 | residual_overlap=0.015397
+[step     1500] t/d= 15.000 | task1=3.755696e-01 | |m1|=0.124363 | m1²=0.015466 | ||w||²/d=0.800126 | eps_adapter=1.490115e+00 | residual_overlap=0.015490
+[step     1520] t/d= 15.200 | task1=3.754395e-01 | |m1|=0.124650 | m1²=0.015538 | ||w||²/d=0.798774 | eps_adapter=1.488321e+00 | residual_overlap=0.015559
+[step     1540] t/d= 15.400 | task1=3.752363e-01 | |m1|=0.124974 | m1²=0.015619 | ||w||²/d=0.796381 | eps_adapter=1.485218e+00 | residual_overlap=0.015638
+[step     1560] t/d= 15.600 | task1=3.748940e-01 | |m1|=0.125105 | m1²=0.015651 | ||w||²/d=0.792063 | eps_adapter=1.479803e+00 | residual_overlap=0.015676
+[step     1580] t/d= 15.800 | task1=3.746594e-01 | |m1|=0.124659 | m1²=0.015540 | ||w||²/d=0.789088 | eps_adapter=1.476281e+00 | residual_overlap=0.015781
+[step     1600] t/d= 16.000 | task1=3.745022e-01 | |m1|=0.124694 | m1²=0.015549 | ||w||²/d=0.787042 | eps_adapter=1.473745e+00 | residual_overlap=0.015691
+[step     1620] t/d= 16.200 | task1=3.742917e-01 | |m1|=0.125417 | m1²=0.015729 | ||w||²/d=0.784440 | eps_adapter=1.470292e+00 | residual_overlap=0.015675
+[step     1640] t/d= 16.400 | task1=3.740873e-01 | |m1|=0.125268 | m1²=0.015692 | ||w||²/d=0.782099 | eps_adapter=1.467476e+00 | residual_overlap=0.015892
+[step     1660] t/d= 16.600 | task1=3.740338e-01 | |m1|=0.125104 | m1²=0.015651 | ||w||²/d=0.781129 | eps_adapter=1.466347e+00 | residual_overlap=0.015914
+[step     1680] t/d= 16.800 | task1=3.738063e-01 | |m1|=0.125898 | m1²=0.015850 | ||w||²/d=0.778270 | eps_adapter=1.462582e+00 | residual_overlap=0.015870
+[step     1700] t/d= 17.000 | task1=3.735606e-01 | |m1|=0.126227 | m1²=0.015933 | ||w||²/d=0.774977 | eps_adapter=1.458468e+00 | residual_overlap=0.015924
+[step     1720] t/d= 17.200 | task1=3.733770e-01 | |m1|=0.126376 | m1²=0.015971 | ||w||²/d=0.772849 | eps_adapter=1.455840e+00 | residual_overlap=0.016025
+[step     1740] t/d= 17.400 | task1=3.732752e-01 | |m1|=0.126133 | m1²=0.015910 | ||w||²/d=0.771540 | eps_adapter=1.454346e+00 | residual_overlap=0.016024
+[step     1760] t/d= 17.600 | task1=3.730362e-01 | |m1|=0.126519 | m1²=0.016007 | ||w||²/d=0.768155 | eps_adapter=1.450138e+00 | residual_overlap=0.016068
+[step     1780] t/d= 17.800 | task1=3.728445e-01 | |m1|=0.127233 | m1²=0.016188 | ||w||²/d=0.765614 | eps_adapter=1.446843e+00 | residual_overlap=0.016141
+[step     1800] t/d= 18.000 | task1=3.727019e-01 | |m1|=0.127162 | m1²=0.016170 | ||w||²/d=0.763381 | eps_adapter=1.444201e+00 | residual_overlap=0.016047
+[step     1820] t/d= 18.200 | task1=3.726771e-01 | |m1|=0.127430 | m1²=0.016238 | ||w||²/d=0.763514 | eps_adapter=1.444266e+00 | residual_overlap=0.016205
+[step     1840] t/d= 18.400 | task1=3.725345e-01 | |m1|=0.128652 | m1²=0.016551 | ||w||²/d=0.762132 | eps_adapter=1.442192e+00 | residual_overlap=0.016250
+[step     1860] t/d= 18.600 | task1=3.723406e-01 | |m1|=0.129332 | m1²=0.016727 | ||w||²/d=0.759590 | eps_adapter=1.438935e+00 | residual_overlap=0.016270
+[step     1880] t/d= 18.800 | task1=3.721265e-01 | |m1|=0.130166 | m1²=0.016943 | ||w||²/d=0.757035 | eps_adapter=1.435617e+00 | residual_overlap=0.016322
+[step     1900] t/d= 19.000 | task1=3.719542e-01 | |m1|=0.129447 | m1²=0.016757 | ||w||²/d=0.754682 | eps_adapter=1.433094e+00 | residual_overlap=0.016427
+[step     1920] t/d= 19.200 | task1=3.717558e-01 | |m1|=0.130057 | m1²=0.016915 | ||w||²/d=0.752574 | eps_adapter=1.430402e+00 | residual_overlap=0.016533
+[step     1940] t/d= 19.400 | task1=3.716176e-01 | |m1|=0.130961 | m1²=0.017151 | ||w||²/d=0.750841 | eps_adapter=1.428053e+00 | residual_overlap=0.016749
+[step     1960] t/d= 19.600 | task1=3.713307e-01 | |m1|=0.131260 | m1²=0.017229 | ||w||²/d=0.747482 | eps_adapter=1.424025e+00 | residual_overlap=0.016885
+[step     1980] t/d= 19.800 | task1=3.711887e-01 | |m1|=0.132156 | m1²=0.017465 | ||w||²/d=0.745725 | eps_adapter=1.421664e+00 | residual_overlap=0.017014
+[step     2000] t/d= 20.000 | task1=3.709830e-01 | |m1|=0.132712 | m1²=0.017612 | ||w||²/d=0.743040 | eps_adapter=1.418354e+00 | residual_overlap=0.017045
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000002000
+[step     2050] t/d= 20.500 | task1=3.705298e-01 | |m1|=0.133574 | m1²=0.017842 | ||w||²/d=0.737494 | eps_adapter=1.411655e+00 | residual_overlap=0.017164
+[step     2100] t/d= 21.000 | task1=3.701055e-01 | |m1|=0.134346 | m1²=0.018049 | ||w||²/d=0.731627 | eps_adapter=1.404675e+00 | residual_overlap=0.017082
+[step     2150] t/d= 21.500 | task1=3.697247e-01 | |m1|=0.133306 | m1²=0.017771 | ||w||²/d=0.726696 | eps_adapter=1.399443e+00 | residual_overlap=0.017417
+[step     2200] t/d= 22.000 | task1=3.693344e-01 | |m1|=0.133334 | m1²=0.017778 | ||w||²/d=0.721109 | eps_adapter=1.393139e+00 | residual_overlap=0.017660
+[step     2250] t/d= 22.500 | task1=3.689569e-01 | |m1|=0.133921 | m1²=0.017935 | ||w||²/d=0.716155 | eps_adapter=1.387398e+00 | residual_overlap=0.017678
+[step     2300] t/d= 23.000 | task1=3.685090e-01 | |m1|=0.135229 | m1²=0.018287 | ||w||²/d=0.710310 | eps_adapter=1.380467e+00 | residual_overlap=0.017679
+[step     2350] t/d= 23.500 | task1=3.680641e-01 | |m1|=0.135175 | m1²=0.018272 | ||w||²/d=0.704124 | eps_adapter=1.373687e+00 | residual_overlap=0.017843
+[step     2400] t/d= 24.000 | task1=3.677086e-01 | |m1|=0.135801 | m1²=0.018442 | ||w||²/d=0.699106 | eps_adapter=1.368005e+00 | residual_overlap=0.017796
+[step     2450] t/d= 24.500 | task1=3.673272e-01 | |m1|=0.136286 | m1²=0.018574 | ||w||²/d=0.693959 | eps_adapter=1.362273e+00 | residual_overlap=0.017926
+[step     2500] t/d= 25.000 | task1=3.668396e-01 | |m1|=0.137452 | m1²=0.018893 | ||w||²/d=0.687821 | eps_adapter=1.355298e+00 | residual_overlap=0.018228
+[step     2550] t/d= 25.500 | task1=3.663770e-01 | |m1|=0.138580 | m1²=0.019204 | ||w||²/d=0.681837 | eps_adapter=1.348563e+00 | residual_overlap=0.018423
+[step     2600] t/d= 26.000 | task1=3.660032e-01 | |m1|=0.139368 | m1²=0.019424 | ||w||²/d=0.676802 | eps_adapter=1.342997e+00 | residual_overlap=0.018418
+[step     2650] t/d= 26.500 | task1=3.655633e-01 | |m1|=0.139905 | m1²=0.019573 | ||w||²/d=0.671376 | eps_adapter=1.337152e+00 | residual_overlap=0.018694
+[step     2700] t/d= 27.000 | task1=3.650708e-01 | |m1|=0.140701 | m1²=0.019797 | ||w||²/d=0.664882 | eps_adapter=1.330170e+00 | residual_overlap=0.018622
+[step     2750] t/d= 27.500 | task1=3.644804e-01 | |m1|=0.142255 | m1²=0.020237 | ||w||²/d=0.656365 | eps_adapter=1.320952e+00 | residual_overlap=0.018545
+[step     2800] t/d= 28.000 | task1=3.640688e-01 | |m1|=0.143055 | m1²=0.020465 | ||w||²/d=0.651356 | eps_adapter=1.315626e+00 | residual_overlap=0.018903
+[step     2850] t/d= 28.500 | task1=3.636856e-01 | |m1|=0.144128 | m1²=0.020773 | ||w||²/d=0.646497 | eps_adapter=1.310401e+00 | residual_overlap=0.018832
+[step     2900] t/d= 29.000 | task1=3.632922e-01 | |m1|=0.144881 | m1²=0.020990 | ||w||²/d=0.641075 | eps_adapter=1.304768e+00 | residual_overlap=0.018831
+[step     2950] t/d= 29.500 | task1=3.629794e-01 | |m1|=0.146048 | m1²=0.021330 | ||w||²/d=0.637167 | eps_adapter=1.300530e+00 | residual_overlap=0.019049
+[step     3000] t/d= 30.000 | task1=3.627102e-01 | |m1|=0.146225 | m1²=0.021382 | ||w||²/d=0.633118 | eps_adapter=1.296510e+00 | residual_overlap=0.019358
+[step     3050] t/d= 30.500 | task1=3.623413e-01 | |m1|=0.147188 | m1²=0.021664 | ||w||²/d=0.628138 | eps_adapter=1.291358e+00 | residual_overlap=0.019596
+[step     3100] t/d= 31.000 | task1=3.619939e-01 | |m1|=0.149429 | m1²=0.022329 | ||w||²/d=0.623565 | eps_adapter=1.286213e+00 | residual_overlap=0.019978
+[step     3150] t/d= 31.500 | task1=3.616735e-01 | |m1|=0.150481 | m1²=0.022645 | ||w||²/d=0.619264 | eps_adapter=1.281759e+00 | residual_overlap=0.020191
+[step     3200] t/d= 32.000 | task1=3.614183e-01 | |m1|=0.151221 | m1²=0.022868 | ||w||²/d=0.615165 | eps_adapter=1.277630e+00 | residual_overlap=0.020256
+[step     3250] t/d= 32.500 | task1=3.609863e-01 | |m1|=0.152267 | m1²=0.023185 | ||w||²/d=0.610150 | eps_adapter=1.272572e+00 | residual_overlap=0.020613
+[step     3300] t/d= 33.000 | task1=3.606142e-01 | |m1|=0.152429 | m1²=0.023235 | ||w||²/d=0.604798 | eps_adapter=1.267538e+00 | residual_overlap=0.020977
+[step     3350] t/d= 33.500 | task1=3.604359e-01 | |m1|=0.153022 | m1²=0.023416 | ||w||²/d=0.602083 | eps_adapter=1.264833e+00 | residual_overlap=0.020914
+[step     3400] t/d= 34.000 | task1=3.599422e-01 | |m1|=0.155054 | m1²=0.024042 | ||w||²/d=0.595951 | eps_adapter=1.258545e+00 | residual_overlap=0.021300
+[step     3450] t/d= 34.500 | task1=3.597834e-01 | |m1|=0.154862 | m1²=0.023982 | ||w||²/d=0.594347 | eps_adapter=1.257149e+00 | residual_overlap=0.021646
+[step     3500] t/d= 35.000 | task1=3.593770e-01 | |m1|=0.155522 | m1²=0.024187 | ||w||²/d=0.588806 | eps_adapter=1.251926e+00 | residual_overlap=0.021995
+[step     3550] t/d= 35.500 | task1=3.590427e-01 | |m1|=0.155349 | m1²=0.024133 | ||w||²/d=0.584186 | eps_adapter=1.247846e+00 | residual_overlap=0.022395
+[step     3600] t/d= 36.000 | task1=3.587547e-01 | |m1|=0.157185 | m1²=0.024707 | ||w||²/d=0.580070 | eps_adapter=1.243593e+00 | residual_overlap=0.022419
+[step     3650] t/d= 36.500 | task1=3.584965e-01 | |m1|=0.159375 | m1²=0.025400 | ||w||²/d=0.577340 | eps_adapter=1.240470e+00 | residual_overlap=0.022796
+[step     3700] t/d= 37.000 | task1=3.582776e-01 | |m1|=0.161317 | m1²=0.026023 | ||w||²/d=0.574746 | eps_adapter=1.237556e+00 | residual_overlap=0.023053
+[step     3750] t/d= 37.500 | task1=3.580469e-01 | |m1|=0.163870 | m1²=0.026853 | ||w||²/d=0.572259 | eps_adapter=1.234539e+00 | residual_overlap=0.023030
+[step     3800] t/d= 38.000 | task1=3.577287e-01 | |m1|=0.165239 | m1²=0.027304 | ||w||²/d=0.567671 | eps_adapter=1.230118e+00 | residual_overlap=0.023039
+[step     3850] t/d= 38.500 | task1=3.575492e-01 | |m1|=0.165838 | m1²=0.027502 | ||w||²/d=0.564931 | eps_adapter=1.227568e+00 | residual_overlap=0.023519
+[step     3900] t/d= 39.000 | task1=3.573116e-01 | |m1|=0.167147 | m1²=0.027938 | ||w||²/d=0.560746 | eps_adapter=1.223568e+00 | residual_overlap=0.023441
+[step     3950] t/d= 39.500 | task1=3.570177e-01 | |m1|=0.168290 | m1²=0.028322 | ||w||²/d=0.556320 | eps_adapter=1.219451e+00 | residual_overlap=0.023505
+[step     4000] t/d= 40.000 | task1=3.567032e-01 | |m1|=0.169500 | m1²=0.028730 | ||w||²/d=0.551810 | eps_adapter=1.215277e+00 | residual_overlap=0.023730
+[step     4050] t/d= 40.500 | task1=3.564089e-01 | |m1|=0.169832 | m1²=0.028843 | ||w||²/d=0.547743 | eps_adapter=1.211797e+00 | residual_overlap=0.024057
+[step     4100] t/d= 41.000 | task1=3.562531e-01 | |m1|=0.171798 | m1²=0.029515 | ||w||²/d=0.546011 | eps_adapter=1.209715e+00 | residual_overlap=0.024031
+[step     4150] t/d= 41.500 | task1=3.559822e-01 | |m1|=0.172486 | m1²=0.029751 | ||w||²/d=0.542364 | eps_adapter=1.206502e+00 | residual_overlap=0.024287
+[step     4200] t/d= 42.000 | task1=3.557610e-01 | |m1|=0.174358 | m1²=0.030401 | ||w||²/d=0.539847 | eps_adapter=1.203829e+00 | residual_overlap=0.024541
+[step     4250] t/d= 42.500 | task1=3.555832e-01 | |m1|=0.174423 | m1²=0.030423 | ||w||²/d=0.537935 | eps_adapter=1.202263e+00 | residual_overlap=0.025013
+[step     4300] t/d= 43.000 | task1=3.554450e-01 | |m1|=0.176256 | m1²=0.031066 | ||w||²/d=0.536198 | eps_adapter=1.200247e+00 | residual_overlap=0.024873
+[step     4350] t/d= 43.500 | task1=3.553127e-01 | |m1|=0.176630 | m1²=0.031198 | ||w||²/d=0.533883 | eps_adapter=1.198268e+00 | residual_overlap=0.025003
+[step     4400] t/d= 44.000 | task1=3.549761e-01 | |m1|=0.178429 | m1²=0.031837 | ||w||²/d=0.530312 | eps_adapter=1.194821e+00 | residual_overlap=0.025511
+[step     4450] t/d= 44.500 | task1=3.547607e-01 | |m1|=0.179162 | m1²=0.032099 | ||w||²/d=0.527569 | eps_adapter=1.192407e+00 | residual_overlap=0.025765
+[step     4500] t/d= 45.000 | task1=3.544041e-01 | |m1|=0.178729 | m1²=0.031944 | ||w||²/d=0.523094 | eps_adapter=1.189047e+00 | residual_overlap=0.026374
+[step     4550] t/d= 45.500 | task1=3.541739e-01 | |m1|=0.180799 | m1²=0.032688 | ||w||²/d=0.519226 | eps_adapter=1.185351e+00 | residual_overlap=0.026394
+[step     4600] t/d= 46.000 | task1=3.538200e-01 | |m1|=0.183400 | m1²=0.033636 | ||w||²/d=0.514515 | eps_adapter=1.180858e+00 | residual_overlap=0.026514
+[step     4650] t/d= 46.500 | task1=3.535864e-01 | |m1|=0.185665 | m1²=0.034471 | ||w||²/d=0.511847 | eps_adapter=1.178062e+00 | residual_overlap=0.026836
+[step     4700] t/d= 47.000 | task1=3.533390e-01 | |m1|=0.186838 | m1²=0.034909 | ||w||²/d=0.508180 | eps_adapter=1.174898e+00 | residual_overlap=0.026975
+[step     4750] t/d= 47.500 | task1=3.531153e-01 | |m1|=0.188529 | m1²=0.035543 | ||w||²/d=0.505453 | eps_adapter=1.172282e+00 | residual_overlap=0.027124
+[step     4800] t/d= 48.000 | task1=3.529443e-01 | |m1|=0.189578 | m1²=0.035940 | ||w||²/d=0.502767 | eps_adapter=1.169929e+00 | residual_overlap=0.027448
+[step     4850] t/d= 48.500 | task1=3.527438e-01 | |m1|=0.191225 | m1²=0.036567 | ||w||²/d=0.501004 | eps_adapter=1.168065e+00 | residual_overlap=0.027827
+[step     4900] t/d= 49.000 | task1=3.525310e-01 | |m1|=0.191855 | m1²=0.036808 | ||w||²/d=0.497575 | eps_adapter=1.165335e+00 | residual_overlap=0.028085
+[step     4950] t/d= 49.500 | task1=3.523959e-01 | |m1|=0.191703 | m1²=0.036750 | ||w||²/d=0.495449 | eps_adapter=1.163837e+00 | residual_overlap=0.028381
+[step     5000] t/d= 50.000 | task1=3.520646e-01 | |m1|=0.193194 | m1²=0.037324 | ||w||²/d=0.491070 | eps_adapter=1.160164e+00 | residual_overlap=0.028816
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000005000
+[step     5050] t/d= 50.500 | task1=3.518910e-01 | |m1|=0.194704 | m1²=0.037910 | ||w||²/d=0.488178 | eps_adapter=1.157580e+00 | residual_overlap=0.028608
+[step     5100] t/d= 51.000 | task1=3.516828e-01 | |m1|=0.195350 | m1²=0.038162 | ||w||²/d=0.485067 | eps_adapter=1.155149e+00 | residual_overlap=0.028738
+[step     5150] t/d= 51.500 | task1=3.515749e-01 | |m1|=0.197015 | m1²=0.038815 | ||w||²/d=0.484289 | eps_adapter=1.154033e+00 | residual_overlap=0.029168
+[step     5200] t/d= 52.000 | task1=3.513079e-01 | |m1|=0.199107 | m1²=0.039644 | ||w||²/d=0.481184 | eps_adapter=1.151137e+00 | residual_overlap=0.029341
+[step     5250] t/d= 52.500 | task1=3.512047e-01 | |m1|=0.198452 | m1²=0.039383 | ||w||²/d=0.479271 | eps_adapter=1.150026e+00 | residual_overlap=0.029541
+[step     5300] t/d= 53.000 | task1=3.510502e-01 | |m1|=0.200182 | m1²=0.040073 | ||w||²/d=0.477338 | eps_adapter=1.148094e+00 | residual_overlap=0.029494
+[step     5350] t/d= 53.500 | task1=3.508041e-01 | |m1|=0.201910 | m1²=0.040768 | ||w||²/d=0.474225 | eps_adapter=1.145357e+00 | residual_overlap=0.029626
+[step     5400] t/d= 54.000 | task1=3.506149e-01 | |m1|=0.202808 | m1²=0.041131 | ||w||²/d=0.472455 | eps_adapter=1.143838e+00 | residual_overlap=0.030230
+[step     5450] t/d= 54.500 | task1=3.503660e-01 | |m1|=0.203473 | m1²=0.041401 | ||w||²/d=0.469192 | eps_adapter=1.141393e+00 | residual_overlap=0.030393
+[step     5500] t/d= 55.000 | task1=3.500827e-01 | |m1|=0.205068 | m1²=0.042053 | ||w||²/d=0.465038 | eps_adapter=1.138053e+00 | residual_overlap=0.030405
+[step     5550] t/d= 55.500 | task1=3.497829e-01 | |m1|=0.206478 | m1²=0.042633 | ||w||²/d=0.460862 | eps_adapter=1.134795e+00 | residual_overlap=0.030602
+[step     5600] t/d= 56.000 | task1=3.495651e-01 | |m1|=0.209003 | m1²=0.043682 | ||w||²/d=0.458731 | eps_adapter=1.132529e+00 | residual_overlap=0.030909
+[step     5650] t/d= 56.500 | task1=3.493633e-01 | |m1|=0.211783 | m1²=0.044852 | ||w||²/d=0.457125 | eps_adapter=1.130521e+00 | residual_overlap=0.031160
+[step     5700] t/d= 57.000 | task1=3.491996e-01 | |m1|=0.213384 | m1²=0.045533 | ||w||²/d=0.455015 | eps_adapter=1.128596e+00 | residual_overlap=0.031465
+[step     5750] t/d= 57.500 | task1=3.490245e-01 | |m1|=0.215714 | m1²=0.046533 | ||w||²/d=0.453739 | eps_adapter=1.126960e+00 | residual_overlap=0.031841
+[step     5800] t/d= 58.000 | task1=3.488050e-01 | |m1|=0.217801 | m1²=0.047437 | ||w||²/d=0.451407 | eps_adapter=1.124735e+00 | residual_overlap=0.032232
+[step     5850] t/d= 58.500 | task1=3.485075e-01 | |m1|=0.220932 | m1²=0.048811 | ||w||²/d=0.448412 | eps_adapter=1.121731e+00 | residual_overlap=0.032439
+[step     5900] t/d= 59.000 | task1=3.482668e-01 | |m1|=0.222336 | m1²=0.049433 | ||w||²/d=0.445122 | eps_adapter=1.119170e+00 | residual_overlap=0.032730
+[step     5950] t/d= 59.500 | task1=3.479847e-01 | |m1|=0.223819 | m1²=0.050095 | ||w||²/d=0.441048 | eps_adapter=1.116119e+00 | residual_overlap=0.033026
+[step     6000] t/d= 60.000 | task1=3.478070e-01 | |m1|=0.225407 | m1²=0.050809 | ||w||²/d=0.438560 | eps_adapter=1.114032e+00 | residual_overlap=0.033043
+[step     6050] t/d= 60.500 | task1=3.476678e-01 | |m1|=0.226939 | m1²=0.051502 | ||w||²/d=0.437241 | eps_adapter=1.112685e+00 | residual_overlap=0.033490
+[step     6100] t/d= 61.000 | task1=3.474764e-01 | |m1|=0.228193 | m1²=0.052072 | ||w||²/d=0.434464 | eps_adapter=1.110561e+00 | residual_overlap=0.033596
+[step     6150] t/d= 61.500 | task1=3.473772e-01 | |m1|=0.229581 | m1²=0.052708 | ||w||²/d=0.433501 | eps_adapter=1.109489e+00 | residual_overlap=0.033647
+[step     6200] t/d= 62.000 | task1=3.471448e-01 | |m1|=0.230575 | m1²=0.053165 | ||w||²/d=0.429516 | eps_adapter=1.106761e+00 | residual_overlap=0.033848
+[step     6250] t/d= 62.500 | task1=3.469759e-01 | |m1|=0.231853 | m1²=0.053756 | ||w||²/d=0.427767 | eps_adapter=1.105276e+00 | residual_overlap=0.034152
+[step     6300] t/d= 63.000 | task1=3.467916e-01 | |m1|=0.233030 | m1²=0.054303 | ||w||²/d=0.425202 | eps_adapter=1.103356e+00 | residual_overlap=0.034346
+[step     6350] t/d= 63.500 | task1=3.466477e-01 | |m1|=0.234131 | m1²=0.054817 | ||w||²/d=0.423417 | eps_adapter=1.101927e+00 | residual_overlap=0.034520
+[step     6400] t/d= 64.000 | task1=3.463547e-01 | |m1|=0.236278 | m1²=0.055827 | ||w||²/d=0.419369 | eps_adapter=1.098837e+00 | residual_overlap=0.034560
+[step     6450] t/d= 64.500 | task1=3.461817e-01 | |m1|=0.237152 | m1²=0.056241 | ||w||²/d=0.417165 | eps_adapter=1.097273e+00 | residual_overlap=0.034635
+[step     6500] t/d= 65.000 | task1=3.459689e-01 | |m1|=0.238725 | m1²=0.056990 | ||w||²/d=0.413868 | eps_adapter=1.094858e+00 | residual_overlap=0.034874
+[step     6550] t/d= 65.500 | task1=3.457554e-01 | |m1|=0.240399 | m1²=0.057792 | ||w||²/d=0.410138 | eps_adapter=1.092191e+00 | residual_overlap=0.034807
+[step     6600] t/d= 66.000 | task1=3.456367e-01 | |m1|=0.241587 | m1²=0.058364 | ||w||²/d=0.408045 | eps_adapter=1.090619e+00 | residual_overlap=0.034799
+[step     6650] t/d= 66.500 | task1=3.455274e-01 | |m1|=0.243067 | m1²=0.059082 | ||w||²/d=0.407223 | eps_adapter=1.089646e+00 | residual_overlap=0.035084
+[step     6700] t/d= 67.000 | task1=3.453928e-01 | |m1|=0.245149 | m1²=0.060098 | ||w||²/d=0.406430 | eps_adapter=1.088474e+00 | residual_overlap=0.035399
+[step     6750] t/d= 67.500 | task1=3.452239e-01 | |m1|=0.247102 | m1²=0.061060 | ||w||²/d=0.404410 | eps_adapter=1.086685e+00 | residual_overlap=0.035667
+[step     6800] t/d= 68.000 | task1=3.450715e-01 | |m1|=0.248898 | m1²=0.061950 | ||w||²/d=0.402246 | eps_adapter=1.084884e+00 | residual_overlap=0.035605
+[step     6850] t/d= 68.500 | task1=3.449012e-01 | |m1|=0.250808 | m1²=0.062905 | ||w||²/d=0.399850 | eps_adapter=1.082929e+00 | residual_overlap=0.035670
+[step     6900] t/d= 69.000 | task1=3.447618e-01 | |m1|=0.252305 | m1²=0.063658 | ||w||²/d=0.398428 | eps_adapter=1.081644e+00 | residual_overlap=0.035800
+[step     6950] t/d= 69.500 | task1=3.446490e-01 | |m1|=0.254287 | m1²=0.064662 | ||w||²/d=0.397245 | eps_adapter=1.080312e+00 | residual_overlap=0.035852
+[step     7000] t/d= 70.000 | task1=3.444381e-01 | |m1|=0.255733 | m1²=0.065399 | ||w||²/d=0.394248 | eps_adapter=1.078240e+00 | residual_overlap=0.036099
+[step     7050] t/d= 70.500 | task1=3.443056e-01 | |m1|=0.257687 | m1²=0.066403 | ||w||²/d=0.392642 | eps_adapter=1.076713e+00 | residual_overlap=0.036259
+[step     7100] t/d= 71.000 | task1=3.441518e-01 | |m1|=0.259734 | m1²=0.067462 | ||w||²/d=0.391648 | eps_adapter=1.075465e+00 | residual_overlap=0.036572
+[step     7150] t/d= 71.500 | task1=3.440289e-01 | |m1|=0.261011 | m1²=0.068127 | ||w||²/d=0.389701 | eps_adapter=1.074018e+00 | residual_overlap=0.036514
+[step     7200] t/d= 72.000 | task1=3.439053e-01 | |m1|=0.263208 | m1²=0.069278 | ||w||²/d=0.388189 | eps_adapter=1.072462e+00 | residual_overlap=0.036549
+[step     7250] t/d= 72.500 | task1=3.437627e-01 | |m1|=0.265098 | m1²=0.070277 | ||w||²/d=0.385845 | eps_adapter=1.070612e+00 | residual_overlap=0.036774
+[step     7300] t/d= 73.000 | task1=3.436046e-01 | |m1|=0.266812 | m1²=0.071188 | ||w||²/d=0.383985 | eps_adapter=1.069073e+00 | residual_overlap=0.036883
+[step     7350] t/d= 73.500 | task1=3.434261e-01 | |m1|=0.269496 | m1²=0.072628 | ||w||²/d=0.381508 | eps_adapter=1.066889e+00 | residual_overlap=0.036681
+[step     7400] t/d= 74.000 | task1=3.432693e-01 | |m1|=0.271885 | m1²=0.073921 | ||w||²/d=0.380095 | eps_adapter=1.065332e+00 | residual_overlap=0.036814
+[step     7450] t/d= 74.500 | task1=3.431840e-01 | |m1|=0.273038 | m1²=0.074550 | ||w||²/d=0.379224 | eps_adapter=1.064492e+00 | residual_overlap=0.037159
+[step     7500] t/d= 75.000 | task1=3.429440e-01 | |m1|=0.276168 | m1²=0.076269 | ||w||²/d=0.375512 | eps_adapter=1.061591e+00 | residual_overlap=0.037402
+[step     7550] t/d= 75.500 | task1=3.427874e-01 | |m1|=0.279012 | m1²=0.077848 | ||w||²/d=0.374501 | eps_adapter=1.060064e+00 | residual_overlap=0.037591
+[step     7600] t/d= 76.000 | task1=3.426828e-01 | |m1|=0.280046 | m1²=0.078426 | ||w||²/d=0.373228 | eps_adapter=1.059094e+00 | residual_overlap=0.037814
+[step     7650] t/d= 76.500 | task1=3.426021e-01 | |m1|=0.281278 | m1²=0.079117 | ||w||²/d=0.371571 | eps_adapter=1.057879e+00 | residual_overlap=0.037834
+[step     7700] t/d= 77.000 | task1=3.425061e-01 | |m1|=0.283281 | m1²=0.080248 | ||w||²/d=0.370351 | eps_adapter=1.056578e+00 | residual_overlap=0.037816
+[step     7750] t/d= 77.500 | task1=3.423292e-01 | |m1|=0.285361 | m1²=0.081431 | ||w||²/d=0.368471 | eps_adapter=1.054957e+00 | residual_overlap=0.038006
+[step     7800] t/d= 78.000 | task1=3.422382e-01 | |m1|=0.287163 | m1²=0.082463 | ||w||²/d=0.368535 | eps_adapter=1.054305e+00 | residual_overlap=0.038161
+[step     7850] t/d= 78.500 | task1=3.421244e-01 | |m1|=0.289255 | m1²=0.083668 | ||w||²/d=0.368131 | eps_adapter=1.053333e+00 | residual_overlap=0.038418
+[step     7900] t/d= 79.000 | task1=3.420410e-01 | |m1|=0.291196 | m1²=0.084795 | ||w||²/d=0.367782 | eps_adapter=1.052438e+00 | residual_overlap=0.038645
+[step     7950] t/d= 79.500 | task1=3.418280e-01 | |m1|=0.294596 | m1²=0.086787 | ||w||²/d=0.365758 | eps_adapter=1.050254e+00 | residual_overlap=0.038572
+[step     8000] t/d= 80.000 | task1=3.417046e-01 | |m1|=0.296738 | m1²=0.088053 | ||w||²/d=0.364944 | eps_adapter=1.049077e+00 | residual_overlap=0.038703
+[step     8050] t/d= 80.500 | task1=3.415220e-01 | |m1|=0.298783 | m1²=0.089272 | ||w||²/d=0.362741 | eps_adapter=1.047351e+00 | residual_overlap=0.038820
+[step     8100] t/d= 81.000 | task1=3.413458e-01 | |m1|=0.301137 | m1²=0.090683 | ||w||²/d=0.361042 | eps_adapter=1.045727e+00 | residual_overlap=0.039000
+[step     8150] t/d= 81.500 | task1=3.412363e-01 | |m1|=0.303033 | m1²=0.091829 | ||w||²/d=0.359806 | eps_adapter=1.044477e+00 | residual_overlap=0.039214
+[step     8200] t/d= 82.000 | task1=3.411551e-01 | |m1|=0.303449 | m1²=0.092081 | ||w||²/d=0.358792 | eps_adapter=1.043898e+00 | residual_overlap=0.039421
+[step     8250] t/d= 82.500 | task1=3.410240e-01 | |m1|=0.305422 | m1²=0.093283 | ||w||²/d=0.357639 | eps_adapter=1.042659e+00 | residual_overlap=0.039781
+[step     8300] t/d= 83.000 | task1=3.409147e-01 | |m1|=0.307444 | m1²=0.094522 | ||w||²/d=0.357100 | eps_adapter=1.041649e+00 | residual_overlap=0.039865
+[step     8350] t/d= 83.500 | task1=3.407435e-01 | |m1|=0.310506 | m1²=0.096414 | ||w||²/d=0.355251 | eps_adapter=1.039705e+00 | residual_overlap=0.039852
+[step     8400] t/d= 84.000 | task1=3.405732e-01 | |m1|=0.313569 | m1²=0.098326 | ||w||²/d=0.353436 | eps_adapter=1.037780e+00 | residual_overlap=0.040005
+[step     8450] t/d= 84.500 | task1=3.405135e-01 | |m1|=0.315483 | m1²=0.099530 | ||w||²/d=0.353422 | eps_adapter=1.037013e+00 | residual_overlap=0.039997
+[step     8500] t/d= 85.000 | task1=3.403809e-01 | |m1|=0.317967 | m1²=0.101103 | ||w||²/d=0.351697 | eps_adapter=1.035357e+00 | residual_overlap=0.040006
+[step     8550] t/d= 85.500 | task1=3.402270e-01 | |m1|=0.320414 | m1²=0.102665 | ||w||²/d=0.350487 | eps_adapter=1.033917e+00 | residual_overlap=0.040295
+[step     8600] t/d= 86.000 | task1=3.401422e-01 | |m1|=0.322026 | m1²=0.103700 | ||w||²/d=0.350105 | eps_adapter=1.033124e+00 | residual_overlap=0.040377
+[step     8650] t/d= 86.500 | task1=3.399958e-01 | |m1|=0.325852 | m1²=0.106180 | ||w||²/d=0.349624 | eps_adapter=1.031393e+00 | residual_overlap=0.040297
+[step     8700] t/d= 87.000 | task1=3.398375e-01 | |m1|=0.327943 | m1²=0.107546 | ||w||²/d=0.347673 | eps_adapter=1.029826e+00 | residual_overlap=0.040502
+[step     8750] t/d= 87.500 | task1=3.397312e-01 | |m1|=0.328648 | m1²=0.108009 | ||w||²/d=0.346020 | eps_adapter=1.028940e+00 | residual_overlap=0.040724
+[step     8800] t/d= 88.000 | task1=3.396033e-01 | |m1|=0.332109 | m1²=0.110297 | ||w||²/d=0.345677 | eps_adapter=1.027401e+00 | residual_overlap=0.040664
+[step     8850] t/d= 88.500 | task1=3.394855e-01 | |m1|=0.334520 | m1²=0.111904 | ||w||²/d=0.344802 | eps_adapter=1.026099e+00 | residual_overlap=0.040608
+[step     8900] t/d= 89.000 | task1=3.393792e-01 | |m1|=0.336536 | m1²=0.113256 | ||w||²/d=0.344161 | eps_adapter=1.025042e+00 | residual_overlap=0.040709
+[step     8950] t/d= 89.500 | task1=3.392721e-01 | |m1|=0.338823 | m1²=0.114801 | ||w||²/d=0.343058 | eps_adapter=1.023711e+00 | residual_overlap=0.040748
+[step     9000] t/d= 90.000 | task1=3.391458e-01 | |m1|=0.341249 | m1²=0.116451 | ||w||²/d=0.342143 | eps_adapter=1.022387e+00 | residual_overlap=0.040909
+[step     9050] t/d= 90.500 | task1=3.389987e-01 | |m1|=0.343449 | m1²=0.117957 | ||w||²/d=0.340539 | eps_adapter=1.020927e+00 | residual_overlap=0.040891
+[step     9100] t/d= 91.000 | task1=3.389221e-01 | |m1|=0.345110 | m1²=0.119101 | ||w||²/d=0.340591 | eps_adapter=1.020248e+00 | residual_overlap=0.041221
+[step     9150] t/d= 91.500 | task1=3.387474e-01 | |m1|=0.349044 | m1²=0.121831 | ||w||²/d=0.339735 | eps_adapter=1.018304e+00 | residual_overlap=0.041345
+[step     9200] t/d= 92.000 | task1=3.386260e-01 | |m1|=0.350702 | m1²=0.122992 | ||w||²/d=0.338646 | eps_adapter=1.017248e+00 | residual_overlap=0.041560
+[step     9250] t/d= 92.500 | task1=3.385224e-01 | |m1|=0.352847 | m1²=0.124501 | ||w||²/d=0.338847 | eps_adapter=1.016398e+00 | residual_overlap=0.041656
+[step     9300] t/d= 93.000 | task1=3.383458e-01 | |m1|=0.356245 | m1²=0.126910 | ||w||²/d=0.338322 | eps_adapter=1.014772e+00 | residual_overlap=0.041778
+[step     9350] t/d= 93.500 | task1=3.382993e-01 | |m1|=0.357136 | m1²=0.127546 | ||w||²/d=0.337653 | eps_adapter=1.014178e+00 | residual_overlap=0.041927
+[step     9400] t/d= 94.000 | task1=3.381758e-01 | |m1|=0.359878 | m1²=0.129512 | ||w||²/d=0.337290 | eps_adapter=1.012878e+00 | residual_overlap=0.041977
+[step     9450] t/d= 94.500 | task1=3.380837e-01 | |m1|=0.362231 | m1²=0.131211 | ||w||²/d=0.336391 | eps_adapter=1.011579e+00 | residual_overlap=0.041855
+[step     9500] t/d= 95.000 | task1=3.379783e-01 | |m1|=0.364462 | m1²=0.132833 | ||w||²/d=0.334825 | eps_adapter=1.010135e+00 | residual_overlap=0.041845
+[step     9550] t/d= 95.500 | task1=3.378256e-01 | |m1|=0.367319 | m1²=0.134923 | ||w||²/d=0.333260 | eps_adapter=1.008424e+00 | residual_overlap=0.041761
+[step     9600] t/d= 96.000 | task1=3.377666e-01 | |m1|=0.368667 | m1²=0.135915 | ||w||²/d=0.332905 | eps_adapter=1.007729e+00 | residual_overlap=0.041885
+[step     9650] t/d= 96.500 | task1=3.376542e-01 | |m1|=0.371126 | m1²=0.137735 | ||w||²/d=0.331820 | eps_adapter=1.006336e+00 | residual_overlap=0.041873
+[step     9700] t/d= 97.000 | task1=3.375319e-01 | |m1|=0.374129 | m1²=0.139972 | ||w||²/d=0.331364 | eps_adapter=1.004880e+00 | residual_overlap=0.041875
+[step     9750] t/d= 97.500 | task1=3.374250e-01 | |m1|=0.376186 | m1²=0.141516 | ||w||²/d=0.330267 | eps_adapter=1.003662e+00 | residual_overlap=0.041717
+[step     9800] t/d= 98.000 | task1=3.372668e-01 | |m1|=0.379757 | m1²=0.144216 | ||w||²/d=0.329413 | eps_adapter=1.001836e+00 | residual_overlap=0.041808
+[step     9850] t/d= 98.500 | task1=3.371121e-01 | |m1|=0.382757 | m1²=0.146503 | ||w||²/d=0.329382 | eps_adapter=1.000480e+00 | residual_overlap=0.041948
+[step     9900] t/d= 99.000 | task1=3.369768e-01 | |m1|=0.385951 | m1²=0.148958 | ||w||²/d=0.328467 | eps_adapter=9.987954e-01 | residual_overlap=0.041879
+[step     9950] t/d= 99.500 | task1=3.368579e-01 | |m1|=0.387779 | m1²=0.150372 | ||w||²/d=0.327445 | eps_adapter=9.977029e-01 | residual_overlap=0.041962
+[step    10000] t/d=100.000 | task1=3.367846e-01 | |m1|=0.388916 | m1²=0.151256 | ||w||²/d=0.327118 | eps_adapter=9.971027e-01 | residual_overlap=0.042161
+Saved checkpoint: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000010000
+
+Task-1 fine-tuning completed.
+Metrics: results/quality_pretraining/finetunetask1_d100_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/metrics.csv
+
+======================================================
+Task-1 fine-tuning finished
+======================================================
