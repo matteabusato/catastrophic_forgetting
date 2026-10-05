@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task2_finetuning.py", line 1769, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task2_finetuning.py", line 1150, in main
+    load_task1_checkpoint(
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task2_finetuning.py", line 84, in load_task1_checkpoint
+    raise FileNotFoundError(
+FileNotFoundError: Task-1 checkpoint does not exist:
+/home/busato/catastrophic_forgetting/quality_pretraining/results/quality_pretraining/finetunetask1_d200_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22/checkpoints/step_000100000

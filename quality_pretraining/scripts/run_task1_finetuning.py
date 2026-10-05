@@ -71,6 +71,9 @@ def default_checkpoint_steps(
         10 * d,
         20 * d,
         50 * d,
+        100 * d,
+        200 * d,
+        500 * d,
         target_steps,
     }
 

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task2_finetuning.py", line 1769, in <module>
+    main()
+  File "/home/busato/catastrophic_forgetting/quality_pretraining/scripts/run_task2_finetuning.py", line 1024, in main
+    raise ValueError(
+ValueError: Dimension mismatch between pretraining and Task-1 runs.

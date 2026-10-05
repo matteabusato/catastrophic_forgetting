@@ -1,0 +1,32 @@
+
+======================================================
+Task-2 fine-tuning
+======================================================
+Pretraining run:       results/quality_pretraining/scaling_d100_T5
+Pretraining step:      0
+Task-1 run:            results/quality_pretraining/finetunetask1_d200_T5/prestep_0_lr0p01_init1_wseed21_sgdseed22
+Task-1 checkpoint:     100000
+Target Task-2 steps:   200000
+Task-2 learning rate:  0.01
+======================================================
+
+Mon Oct  5 15:13:00 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-PCIE-32GB           On  | 00000000:D8:00.0 Off |                  Off |
+| N/A   29C    P0              22W / 250W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
