@@ -141,3 +141,26 @@ def matrix_cosine_overlap(A: Tensor, B: Tensor, eps: float = 1e-12,) -> Tensor:
     denominator = torch.linalg.matrix_norm(A, ord="fro",) * torch.linalg.matrix_norm(B, ord="fro",)
 
     return numerator / (denominator + eps)
+
+@torch.no_grad()
+def attention_metrics(model: Student, X: Tensor, target: Tensor) -> dict[str, float]:
+    """CE, entropy and KL on the same fixed attention rows, in nats."""
+    from src.losses import attention_cross_entropy
+
+    ce = attention_cross_entropy(model.attention_logits(X), target)
+    # xlogy handles zero probabilities without adding a biased epsilon.
+    entropy = -torch.special.xlogy(target, target).sum(dim=-1).mean()
+    return {"attention_ce": ce.item(), "attention_entropy": entropy.item(),
+            "attention_kl": (ce - entropy).item()}
+
+
+@torch.no_grad()
+def task_attention_metrics(model: Student, dataset, S_teacher: Tensor,
+                           prefix: str) -> dict[str, float]:
+    from src.data_model import teacher_attention
+
+    target = dataset.attention_target
+    if target is None:
+        target = teacher_attention(dataset.X, S_teacher)
+    return {f"{prefix}_{key}": value for key, value in
+            attention_metrics(model, dataset.X, target).items()}

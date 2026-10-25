@@ -3,6 +3,8 @@ import math
 import torch
 from torch import Tensor, nn
 
+from src.attention import attention_logits
+
 
 class Student(nn.Module):
     def __init__(
@@ -38,20 +40,15 @@ class Student(nn.Module):
 
         return S
     
+    def attention_logits(self, X: Tensor) -> Tensor:
+        return attention_logits(X, self.S)
+
+    def attention(self, X: Tensor) -> Tensor:
+        return torch.softmax(self.attention_logits(X), dim=-1)
+
     def forward(self, X: Tensor) -> Tensor:
-        d = X.shape[-1]
-        T = X.shape[-2]
+        return self.attention(X) @ X
 
-        A = X @ self.S @ X.transpose(-1, -2) / d
-
-        expectation = (torch.trace(self.S) / d) * torch.eye(T, dtype=X.dtype, device=X.device,)
-
-        A_centered = A - expectation
-
-        attention = torch.softmax(A_centered, dim=-1,)
-
-        return attention @ X
-    
     def set_pretraining_mode(self) -> None:
         self.use_low_rank = False
 

@@ -1,13 +1,15 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 import torch
 from torch import Tensor
 
-from src.data_model import Dataset, Teachers, teacher_forward
+from src.data_model import Dataset, Teachers
 from src.model import Student
+from src.losses import mse_loss, training_loss, teacher_student_loss, validate_loss_type
 from src.observables import (
+    task_attention_metrics,
     representation_error,
     generalization_error,
     matrix_order_parameters,
@@ -34,6 +36,11 @@ class PretrainingMetric:
     trace_S_star: float
     trace_mismatch: float
 
+    output_mse: float = float("nan")
+    attention_ce: float = float("nan")
+    attention_entropy: float = float("nan")
+    attention_kl: float = float("nan")
+
 @dataclass
 class PretrainingCheckpoint:
     step: int
@@ -53,6 +60,12 @@ class PretrainingCheckpoint:
     optimizer_state: dict
     generator_state: Tensor
 
+    output_mse: float = float("nan")
+    attention_ce: float = float("nan")
+    attention_entropy: float = float("nan")
+    attention_kl: float = float("nan")
+    loss_type: str = "output_mse"
+
 @dataclass
 class PretrainingRun:
     metrics: List[PretrainingMetric]
@@ -70,12 +83,14 @@ def _evaluate_pretraining(model: Student, test_data: Dataset, S_star: Tensor, st
     rep_error = representation_error(S, S_star,).item()
     gen_error = generalization_error(model, test_data.X, test_data.y,).item()
     order_params = matrix_order_parameters(S, S_star,)
+    attn = task_attention_metrics(model, test_data, S_star, "pretraining")
 
     return PretrainingMetric(step=step, step_over_d=step / d, step_over_d2=step / (d * d),
-        representation_error=rep_error, generalization_error=gen_error, q=order_params["q"].item(),
+        representation_error=rep_error, generalization_error=gen_error, output_mse=gen_error, q=order_params["q"].item(),
         Q=order_params["Q"].item(), Q_star=order_params["Q_star"].item(), normalized_overlap=order_params["normalized_overlap"].item(),
         trace_S=order_params["trace_S"].item(), trace_S_star=order_params["trace_S_star"].item(),
-        trace_mismatch=order_params["trace_mismatch"].item(),)
+        trace_mismatch=order_params["trace_mismatch"].item(),
+        **{key.removeprefix("pretraining_"): value for key, value in attn.items()})
 
 @dataclass
 class FineTuningMetric:
@@ -90,6 +105,15 @@ class FineTuningMetric:
     overlap_w1: float
     overlap_w2: float
 
+    pretraining_attention_ce: float = float("nan")
+    pretraining_attention_entropy: float = float("nan")
+    pretraining_attention_kl: float = float("nan")
+    task1_attention_ce: float = float("nan")
+    task1_attention_entropy: float = float("nan")
+    task1_attention_kl: float = float("nan")
+    task2_attention_ce: float = float("nan")
+    task2_attention_entropy: float = float("nan")
+    task2_attention_kl: float = float("nan")
 
 @dataclass
 class FineTuningResult:
@@ -127,21 +151,21 @@ class FineTuningResult:
 
     # Full fine-tuning trajectory
     history: List[FineTuningMetric]
+    attention_metrics_before: dict = field(default_factory=dict)
+    attention_metrics_after_task1: dict = field(default_factory=dict)
+    attention_metrics_after_task2: dict = field(default_factory=dict)
+    forgetting_task1_attention_ce: float = float("nan")
+    loss_type: str = "output_mse"
 
 
 
-def mse_loss(prediction: Tensor, target: Tensor) -> Tensor:
-    squared_error = (prediction - target) ** 2
-
-    return (squared_error.sum(dim=(-2, -1)).mean() / prediction.shape[-1])
-
-
-def _sample_example(dataset: Dataset, generator: torch.Generator,) -> tuple[Tensor, Tensor]:
+def _sample_example(dataset: Dataset, generator: torch.Generator,) -> tuple[Tensor, Tensor, Optional[Tensor]]:
     n_samples = dataset.X.shape[0]
 
     index = torch.randint(low=0, high=n_samples, size=(1,), generator=generator, device=dataset.X.device,)
 
-    return (dataset.X[index], dataset.y[index],)
+    return (dataset.X[index], dataset.y[index],
+        None if dataset.attention_target is None else dataset.attention_target[index])
 
 
 def _should_evaluate_pretraining(step: int, d: int, eval_every: int,) -> bool:
@@ -158,8 +182,10 @@ def _should_evaluate_pretraining(step: int, d: int, eval_every: int,) -> bool:
 def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_step: int, lr: float,
     checkpoint_steps: List[int], eval_every: int, seed: int = 0, start_step: int = 0,
     optimizer_state: Optional[dict] = None, generator_state: Optional[Tensor] = None, metric_callback: Optional[Callable[[PretrainingMetric], None]] = None,
-    checkpoint_callback: Optional[Callable[[PretrainingCheckpoint], None]] = None,) -> PretrainingRun:
+    checkpoint_callback: Optional[Callable[[PretrainingCheckpoint], None]] = None,
+    loss_type: str = "output_mse",) -> PretrainingRun:
 
+    validate_loss_type(loss_type)
     checkpoint_steps = sorted(set(checkpoint_steps) | {target_step})
     checkpoint_steps = [step for step in checkpoint_steps if start_step <= step <= target_step]
 
@@ -203,7 +229,9 @@ def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_
             trace_S_star=metric.trace_S_star,
             trace_mismatch=metric.trace_mismatch,
             optimizer_state=deepcopy(optimizer.state_dict()),
-            generator_state=(generator.get_state().cpu().clone()),)
+            generator_state=(generator.get_state().cpu().clone()),
+            output_mse=metric.output_mse, attention_ce=metric.attention_ce, attention_entropy=metric.attention_entropy,
+            attention_kl=metric.attention_kl, loss_type=loss_type,)
 
         checkpoints.append(checkpoint)
 
@@ -220,12 +248,8 @@ def pretrain(model: Student, test_data: Dataset, S_star: Tensor, T: int, target_
     for step in range(start_step + 1, target_step + 1,):
         X = torch.randn(1, T, model.d, generator=generator, dtype=model.W.dtype, device=model.W.device,)
 
-        with torch.no_grad():
-            y = teacher_forward(X, S_star,)
-
         optimizer.zero_grad(set_to_none=True)
-        prediction = model(X)
-        loss = mse_loss(prediction, y,)
+        loss = teacher_student_loss(model, X, S_star, loss_type)
 
         loss.backward()
         optimizer.step()
@@ -258,16 +282,22 @@ def _evaluate_finetuning(model: Student, pretraining_test: Dataset, task1_test: 
     error1 = generalization_error(model, task1_test.X, task1_test.y,).item()
     error2 = generalization_error(model, task2_test.X, task2_test.y,).item()
 
+    attn = {}
+    for prefix, dataset, S in [("pretraining", pretraining_test, teachers.S_star),
+                                ("task1", task1_test, teachers.S1_star),
+                                ("task2", task2_test, teachers.S2_star)]:
+        attn.update(task_attention_metrics(model, dataset, S, prefix))
+
     overlap1 = vector_overlap(model.w, teachers.w1_star,).item()
     overlap2 = vector_overlap(model.w, teachers.w2_star,).item()
 
     return FineTuningMetric(stage=stage, step=step, pretraining_error=pretraining_error,
-        task1_error=error1, task2_error=error2, overlap_w1=overlap1, overlap_w2=overlap2,)
+        task1_error=error1, task2_error=error2, overlap_w1=overlap1, overlap_w2=overlap2, **attn,)
 
 
 def _train_low_rank_on_task(model: Student, train_data: Dataset, pretraining_test: Dataset, task1_test: Dataset, task2_test: Dataset,
     teachers: Teachers, optimizer: torch.optim.Optimizer, n_steps: int, eval_every: int,
-    generator: torch.Generator, stage: str,) -> List[FineTuningMetric]:
+    generator: torch.Generator, stage: str, loss_type: str = "output_mse",) -> List[FineTuningMetric]:
     """
     Train the low-rank adapter w on one task.
     """
@@ -275,10 +305,9 @@ def _train_low_rank_on_task(model: Student, train_data: Dataset, pretraining_tes
     history = []
 
     for step in range(1, n_steps + 1):
-        X_batch, y_batch = _sample_example(train_data, generator,)
+        X_batch, y_batch, attention_target = _sample_example(train_data, generator,)
         optimizer.zero_grad(set_to_none=True)
-        prediction = model(X_batch)
-        loss = mse_loss(prediction, y_batch,)
+        loss = training_loss(model, X_batch, y_batch, attention_target, loss_type)
 
         loss.backward()
 
@@ -296,11 +325,16 @@ def _train_low_rank_on_task(model: Student, train_data: Dataset, pretraining_tes
 def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: Dataset, task1_train: Dataset, task1_test: Dataset,
     task2_train: Dataset, task2_test: Dataset, teachers: Teachers, n_steps_task1: int,
     n_steps_task2: int, lr: float, low_rank_init_scale: float = 1.0, eval_every: int = 100,
-    seed: int = 0,) -> FineTuningResult:
+    seed: int = 0, loss_type: str = "output_mse",) -> FineTuningResult:
     """
     Perform the sequential fine-tuning protocol:
     """
 
+    validate_loss_type(loss_type)
+    if loss_type == "attention_ce" and any(
+        data.attention_target is None for data in (task1_train, task2_train)
+    ):
+        raise ValueError("Attention CE requires attention targets in training datasets.")
     model.load_large_rank(W_checkpoint )
     model.set_pretraining_mode()
     model.zero_grad(set_to_none=True)
@@ -321,6 +355,10 @@ def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: 
     model.set_finetuning_mode()
     model.zero_grad(set_to_none=True)
 
+    history.append(_evaluate_finetuning(
+        model, pretraining_test, task1_test, task2_test, teachers,
+        stage="after_adapter_init", step=0))
+
     optimizer = torch.optim.SGD([model.w], lr=lr,)
 
     generator = torch.Generator(device=task1_train.X.device)
@@ -332,7 +370,7 @@ def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: 
 
     history_task1 = _train_low_rank_on_task(model=model, train_data=task1_train, pretraining_test=pretraining_test,task1_test=task1_test, task2_test=task2_test,
         teachers=teachers, optimizer=optimizer, n_steps=n_steps_task1, eval_every=eval_every,
-        generator=generator, stage="task1",)
+        generator=generator, stage="task1", loss_type=loss_type,)
 
     history.extend(history_task1)
 
@@ -347,7 +385,7 @@ def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: 
 
     history_task2 = _train_low_rank_on_task(model=model, train_data=task2_train, pretraining_test=pretraining_test, task1_test=task1_test, task2_test=task2_test,
         teachers=teachers, optimizer=optimizer, n_steps=n_steps_task2, eval_every=eval_every,
-        generator=generator, stage="task2",)
+        generator=generator, stage="task2", loss_type=loss_type,)
 
     history.extend(history_task2)
 
@@ -380,4 +418,9 @@ def finetune_sequential(model: Student, W_checkpoint: Tensor, pretraining_test: 
         w_after_task1=w_after_task1,
         w_after_task2=w_after_task2,
         history=history,
+        attention_metrics_before={k: v for k, v in vars(initial_metric).items() if "attention_" in k},
+        attention_metrics_after_task1={k: v for k, v in vars(metric_after_task1).items() if "attention_" in k},
+        attention_metrics_after_task2={k: v for k, v in vars(metric_after_task2).items() if "attention_" in k},
+        forgetting_task1_attention_ce=(metric_after_task2.task1_attention_ce - metric_after_task1.task1_attention_ce),
+        loss_type=loss_type,
     )

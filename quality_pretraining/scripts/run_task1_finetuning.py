@@ -19,7 +19,8 @@ from src.observables import (
     rank_one_overlap,
     matrix_cosine_overlap,
 )
-from src.training import mse_loss
+from src.losses import LOSS_TYPES, ATTENTION_REDUCTION, resolve_loss_type, teacher_student_loss
+from src.observables import task_attention_metrics
 from src.io_utils import (
     load_config,
     load_pretraining_checkpoint,
@@ -117,6 +118,8 @@ def evaluate(
     task1_test,
     pretraining_step: int,
     finetune_step: int,
+    task2_test=None,
+    stage: str = "task1",
 ) -> dict:
 
     d = model.d
@@ -260,7 +263,18 @@ def evaluate(
         ).item()
     )
 
+    attention = {}
+    attention.update(task_attention_metrics(model, pretraining_test, teachers.S_star, "pretraining"))
+    attention.update(task_attention_metrics(model, task1_test, teachers.S1_star, "task1"))
+    if task2_test is not None:
+        attention.update(task_attention_metrics(model, task2_test, teachers.S2_star, "task2"))
+
     return {
+        "pretraining_output_mse": pretraining_error,
+        "task1_output_mse": task1_error,
+        "task2_output_mse": generalization_error(model, task2_test.X, task2_test.y).item() if task2_test is not None else float("nan"),
+        **attention,
+        "stage": stage,
         "pretraining_step": (
             pretraining_step
         ),
@@ -336,6 +350,20 @@ def evaluate(
 
 
 METRIC_FIELDS = [
+    "pretraining_output_mse",
+    "task1_output_mse",
+    "task2_output_mse",
+    "stage",
+    "pretraining_attention_ce",
+    "pretraining_attention_entropy",
+    "pretraining_attention_kl",
+    "task1_attention_ce",
+    "task1_attention_entropy",
+    "task1_attention_kl",
+    "task2_attention_ce",
+    "task2_attention_entropy",
+    "task2_attention_kl",
+
     "pretraining_step",
     "pretraining_step_over_d2",
 
@@ -403,6 +431,7 @@ def save_finetuning_checkpoint(
     optimizer,
     generator: torch.Generator,
     metric: dict,
+    loss_type: str = "output_mse",
 ) -> Path:
 
     checkpoint_dir = (
@@ -428,6 +457,9 @@ def save_finetuning_checkpoint(
             "finetune_step": (
                 finetune_step
             ),
+
+            "loss_type": loss_type,
+            "attention_reduction": ATTENTION_REDUCTION,
 
             "optimizer_state": (
                 optimizer.state_dict()
@@ -471,6 +503,11 @@ def build_parser():
             "pretraining checkpoint."
         )
     )
+
+    parser.add_argument("--task2-test-seed", type=int, default=41)
+    parser.add_argument("--loss", choices=LOSS_TYPES, default=None,
+                        help="Training objective; defaults to the source checkpoint objective.")
+    parser.add_argument("--results-root", type=Path, default=Path("results/quality_pretraining"))
 
     parser.add_argument(
         "--pretrain-run-dir",
@@ -595,6 +632,8 @@ def main():
         pretrain_run_dir
     )
 
+    loss_type = resolve_loss_type(args.loss, pretrain_config)
+
     dtype = parse_dtype(
         pretrain_config["dtype"]
     )
@@ -675,6 +714,8 @@ def main():
         dtype=dtype,
     )
 
+    resolve_loss_type(loss_type, loaded)
+
     if loaded["step"] != args.pretrain_step:
         raise RuntimeError(
             "Loaded pretraining checkpoint "
@@ -742,6 +783,9 @@ def main():
     )
 
     # --------------------------------------------------------
+    # Evaluate all teachers on fixed inputs even before Task 2 is trained.
+    task2_test = generate_dataset(n_test, T, d, teachers.S2_star, args.task2_test_seed)
+
     # Optimizer + online stream
     # --------------------------------------------------------
 
@@ -762,9 +806,7 @@ def main():
     # Output layout
     # --------------------------------------------------------
 
-    base_output_dir = Path(
-        "results"
-    ) / "quality_pretraining" / (
+    base_output_dir = args.results_root / (
         f"finetunetask1_d{d}_T{T}"
     )
 
@@ -775,6 +817,9 @@ def main():
         f"_wseed{args.w_init_seed}"
         f"_sgdseed{args.sgd_seed}"
     )
+
+    if loss_type == "attention_ce":
+        run_name += "_attention_ce"
 
     run_dir = (
         base_output_dir
@@ -806,6 +851,8 @@ def main():
     )
 
     config = {
+        "loss_type": loss_type,
+        "attention_reduction": ATTENTION_REDUCTION,
         "experiment": (
             "finetune_task1"
         ),
@@ -848,6 +895,7 @@ def main():
             args.sgd_seed
         ),
 
+        "task2_test_seed": args.task2_test_seed,
         "task1_test_seed": (
             args.task1_test_seed
         ),
@@ -900,6 +948,7 @@ def main():
     print(f"T               : {T}")
     print(f"device          : {device}")
     print(f"lr              : {args.lr}")
+    print(f"training loss   : {loss_type}")
     print(
         f"w init scale    : "
         f"{args.low_rank_init_scale}"
@@ -918,6 +967,14 @@ def main():
     # Initial evaluation
     # --------------------------------------------------------
 
+    # The initialized vector is retained; only its contribution is disabled here.
+    model.use_low_rank = False
+    before_adapter = evaluate(model, teachers, pretraining_test, task1_test,
+                              args.pretrain_step, 0, task2_test=task2_test,
+                              stage="before_adapter_init")
+    append_metric(metrics_path, before_adapter)
+    model.use_low_rank = True
+
     metric = evaluate(
         model=model,
         teachers=teachers,
@@ -925,6 +982,8 @@ def main():
         task1_test=task1_test,
         pretraining_step=args.pretrain_step,
         finetune_step=0,
+        stage="after_adapter_init",
+        task2_test=task2_test,
     )
 
     append_metric(
@@ -934,7 +993,7 @@ def main():
 
     print(
         f"[step 0] "
-        f"task1={metric['task1_error']:.6e} | "
+        f"task1 MSE={metric['task1_error']:.6e} CE={metric['task1_attention_ce']:.6e} | "
         f"|m1|={metric['abs_overlap_w1']:.6f} | "
         f"m1²={metric['squared_overlap_w1']:.6f} | "
         f"||w||²/d="
@@ -961,23 +1020,8 @@ def main():
             device=device,
         )
 
-        with torch.no_grad():
-
-            y = teacher_forward(
-                X,
-                S_task1,
-            )
-
-        optimizer.zero_grad(
-            set_to_none=True
-        )
-
-        prediction = model(X)
-
-        loss = mse_loss(
-            prediction,
-            y,
-        )
+        optimizer.zero_grad(set_to_none=True)
+        loss = teacher_student_loss(model, X, teachers.S1_star, loss_type)
 
         loss.backward()
         optimizer.step()
@@ -1011,6 +1055,7 @@ def main():
                 task1_test=task1_test,
                 pretraining_step=args.pretrain_step,
                 finetune_step=step,
+                task2_test=task2_test,
             )
 
             append_metric(
@@ -1045,6 +1090,7 @@ def main():
                     optimizer=optimizer,
                     generator=generator,
                     metric=metric,
+                    loss_type=loss_type,
                 )
             )
 

@@ -9,6 +9,7 @@ from src.data_model import (
     generate_dataset,
 )
 from src.model import Student
+from src.losses import LOSS_TYPES, ATTENTION_REDUCTION, resolve_loss_type
 from src.training import pretrain
 from src.io_utils import (
     append_pretraining_metric,
@@ -106,6 +107,10 @@ def build_parser():
             "quality experiment."
         )
     )
+
+    parser.add_argument("--loss", choices=LOSS_TYPES, default=None,
+                        help="Training objective; resume inherits the saved objective.")
+    parser.add_argument("--overwrite", action="store_true")
 
     parser.add_argument(
         "--results-root",
@@ -261,6 +266,8 @@ def main():
             run_dir
         )
 
+        loss_type = resolve_loss_type(args.loss, config)
+
         dtype = parse_dtype(
             config["dtype"]
         )
@@ -313,6 +320,7 @@ def main():
             dtype=dtype,
         )
 
+        resolve_loss_type(loss_type, loaded)
         start_step = loaded["step"]
 
         if args.target_steps <= start_step:
@@ -349,6 +357,7 @@ def main():
 
     else:
 
+        loss_type = resolve_loss_type(args.loss)
         dtype = parse_dtype(
             args.dtype
         )
@@ -377,12 +386,17 @@ def main():
             )
         )
 
+        if loss_type == "attention_ce":
+            run_name += "_attention_ce"
+
         run_dir = (
             results_root
             / run_name
         )
 
         if run_dir.exists():
+            if not args.overwrite:
+                raise FileExistsError(f"Run exists: {run_dir}; use --overwrite to replace it.")
             print(
                 f"Removing existing run directory: {run_dir}"
             )
@@ -393,6 +407,8 @@ def main():
         )
 
         config = {
+            "loss_type": loss_type,
+            "attention_reduction": ATTENTION_REDUCTION,
             "experiment": (
                 "quality_pretraining"
             ),
@@ -523,6 +539,7 @@ def main():
     print("Pre-training quality experiment")
     print("--------------------------------")
     print(f"run directory : {run_dir}")
+    print(f"training loss : {loss_type}")
     print(f"device        : {device}")
     print(f"d             : {d}")
     print(f"T             : {T}")
@@ -572,6 +589,7 @@ def main():
             f"t/d²={checkpoint.step / (d*d):.5f} "
             f"eps_S={checkpoint.representation_error:.6e} "
             f"eps_pre={checkpoint.generalization_error:.6e} "
+            f"CE={checkpoint.attention_ce:.6e} KL={checkpoint.attention_kl:.6e} "
             f"q={checkpoint.q:.6e} "
             f"Q={checkpoint.Q:.6e} "
             f"Q*={checkpoint.Q_star:.6e} "
@@ -597,6 +615,7 @@ def main():
         generator_state=generator_state,
         metric_callback=metric_callback,
         checkpoint_callback=checkpoint_callback,
+        loss_type=loss_type,
     )
 
     append_run_history(

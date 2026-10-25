@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -18,7 +20,8 @@ from src.observables import (
     rank_one_reconstruction_error,
     rank_one_overlap,
 )
-from src.training import mse_loss
+from src.losses import LOSS_TYPES, ATTENTION_REDUCTION, resolve_loss_type, teacher_student_loss
+from src.observables import task_attention_metrics
 from src.io_utils import (
     load_config,
     load_pretraining_checkpoint,
@@ -119,6 +122,9 @@ def load_task1_checkpoint(
 
         metrics = None
 
+    state_path = checkpoint_dir / "training_state.pt"
+    state = torch.load(state_path, map_location="cpu", weights_only=False) if state_path.exists() else {}
+
     return {
         "step": step,
         "w": w.to(
@@ -127,6 +133,8 @@ def load_task1_checkpoint(
         ),
         "metrics": metrics,
         "checkpoint_dir": checkpoint_dir,
+        "loss_type": state.get("loss_type", "output_mse"),
+        "attention_reduction": state.get("attention_reduction", ATTENTION_REDUCTION),
     }
 
 
@@ -274,6 +282,7 @@ def evaluate(
     pretraining_error_before_task1: float,
     pretraining_error_before_task2: float,
     task1_error_before_task2: float,
+    attention_baselines: dict | None = None,
 ) -> dict:
 
     d = model.d
@@ -492,7 +501,26 @@ def evaluate(
     # Return
     # ========================================================
 
+    attention = {}
+    attention.update(task_attention_metrics(model, pretraining_test, teachers.S_star, "pretraining"))
+    attention.update(task_attention_metrics(model, task1_test, teachers.S1_star, "task1"))
+    attention.update(task_attention_metrics(model, task2_test, teachers.S2_star, "task2"))
+    baselines = attention_baselines or {}
+    ce_before = baselines.get("task1_attention_ce_before_task2", float("nan"))
+    acquired = baselines.get("task1_attention_ce_before_task1", float("nan")) - ce_before
+    ce_forgetting = attention["task1_attention_ce"] - ce_before
+    attention.update({
+        "forgetting_task1_attention_ce": ce_forgetting,
+        "forgetting_task1_attention_relative": ce_forgetting / acquired if acquired > 1e-12 else float("nan"),
+        "pretraining_attention_forgetting_since_task1": attention["pretraining_attention_ce"] - baselines.get("pretraining_attention_ce_before_task2", float("nan")),
+        "pretraining_attention_forgetting_total": attention["pretraining_attention_ce"] - baselines.get("pretraining_attention_ce_before_task1", float("nan")),
+    })
+
     return {
+        "pretraining_output_mse": pretraining_error,
+        "task1_output_mse": task1_error,
+        "task2_output_mse": task2_error,
+        **attention,
 
         # ----------------------------------------------------
         # Source checkpoints
@@ -682,6 +710,23 @@ def evaluate(
 
 
 METRIC_FIELDS = [
+    "pretraining_output_mse",
+    "task1_output_mse",
+    "task2_output_mse",
+    "pretraining_attention_ce",
+    "pretraining_attention_entropy",
+    "pretraining_attention_kl",
+    "task1_attention_ce",
+    "task1_attention_entropy",
+    "task1_attention_kl",
+    "task2_attention_ce",
+    "task2_attention_entropy",
+    "task2_attention_kl",
+    "forgetting_task1_attention_ce",
+    "forgetting_task1_attention_relative",
+    "pretraining_attention_forgetting_since_task1",
+    "pretraining_attention_forgetting_total",
+
 
     "pretraining_step",
     "pretraining_step_over_d2",
@@ -772,6 +817,7 @@ def save_task2_checkpoint(
     optimizer,
     generator: torch.Generator,
     metric: dict,
+    loss_type: str = "output_mse",
 ) -> Path:
 
     checkpoint_dir = (
@@ -798,6 +844,9 @@ def save_task2_checkpoint(
             "task2_step": (
                 task2_step
             ),
+
+            "loss_type": loss_type,
+            "attention_reduction": ATTENTION_REDUCTION,
 
             "optimizer_state": (
                 optimizer.state_dict()
@@ -846,6 +895,10 @@ def build_parser():
     # --------------------------------------------------------
     # Pretraining source
     # --------------------------------------------------------
+
+    parser.add_argument("--loss", choices=LOSS_TYPES, default=None,
+                        help="Training objective; defaults to the source checkpoint objective.")
+    parser.add_argument("--results-root", type=Path, default=Path("results/quality_pretraining"))
 
     parser.add_argument(
         "--pretrain-run-dir",
@@ -996,6 +1049,8 @@ def main():
     task1_config = load_config(
         task1_run_dir
     )
+
+    loss_type = resolve_loss_type(args.loss, pretrain_config, task1_config)
 
     dtype = parse_dtype(
         pretrain_config["dtype"]
@@ -1159,6 +1214,8 @@ def main():
     # Student
     # ========================================================
 
+    resolve_loss_type(loss_type, loaded_pretraining, loaded_task1)
+
     model = Student(
         d=d,
         kappa=kappa,
@@ -1270,6 +1327,19 @@ def main():
     )
 
     # ========================================================
+    attention_baselines = {
+        "pretraining_attention_ce_before_task2": task_attention_metrics(
+            model, pretraining_test, teachers.S_star, "pretraining")["pretraining_attention_ce"],
+        "task1_attention_ce_before_task2": task_attention_metrics(
+            model, task1_test, teachers.S1_star, "task1")["task1_attention_ce"],
+    }
+    model.use_low_rank = False
+    for prefix, dataset, S in [("pretraining", pretraining_test, teachers.S_star),
+                                ("task1", task1_test, teachers.S1_star)]:
+        values = task_attention_metrics(model, dataset, S, prefix)
+        attention_baselines[f"{prefix}_attention_ce_before_task1"] = values[f"{prefix}_attention_ce"]
+    model.use_low_rank = True
+
     # Optimizer + fresh Task-2 online stream
     # ========================================================
 
@@ -1290,11 +1360,7 @@ def main():
     # Output layout
     # ========================================================
 
-    base_output_dir = (
-        Path("results")
-        / "quality_pretraining"
-        / f"finetunetask2_d{d}_T{T}"
-    )
+    base_output_dir = args.results_root / f"finetunetask2_d{d}_T{T}"
 
     task1_wseed = int(
         task1_config.get(
@@ -1318,6 +1384,9 @@ def main():
         f"_task1sgdseed{task1_sgdseed}"
         f"_task2sgdseed{args.sgd_seed}"
     )
+
+    if loss_type == "attention_ce":
+        run_name += "_attention_ce"
 
     run_dir = (
         base_output_dir
@@ -1360,6 +1429,9 @@ def main():
     # ========================================================
 
     config = {
+        "attention_baselines": attention_baselines,
+        "loss_type": loss_type,
+        "attention_reduction": ATTENTION_REDUCTION,
 
         "experiment": (
             "finetune_task2"
@@ -1608,6 +1680,7 @@ def main():
         task1_error_before_task2=(
             task1_error_before_task2
         ),
+        attention_baselines=attention_baselines,
     )
 
     append_metric(
@@ -1649,23 +1722,8 @@ def main():
             device=device,
         )
 
-        with torch.no_grad():
-
-            y = teacher_forward(
-                X,
-                teachers.S2_star,
-            )
-
-        optimizer.zero_grad(
-            set_to_none=True
-        )
-
-        prediction = model(X)
-
-        loss = mse_loss(
-            prediction,
-            y,
-        )
+        optimizer.zero_grad(set_to_none=True)
+        loss = teacher_student_loss(model, X, teachers.S2_star, loss_type)
 
         loss.backward()
 
@@ -1712,6 +1770,7 @@ def main():
                 task1_error_before_task2=(
                     task1_error_before_task2
                 ),
+                attention_baselines=attention_baselines,
             )
 
             append_metric(
@@ -1748,6 +1807,7 @@ def main():
                     optimizer=optimizer,
                     generator=generator,
                     metric=metric,
+                    loss_type=loss_type,
                 )
             )
 
