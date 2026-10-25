@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import csv
 import json
 import os
@@ -8,6 +10,7 @@ from typing import Optional
 import torch
 
 from src.data_model import Teachers
+from src.losses import ATTENTION_REDUCTION
 from src.training import (
     PretrainingCheckpoint,
     PretrainingMetric,
@@ -134,6 +137,10 @@ PRETRAINING_METRIC_FIELDS = [
     "trace_S",
     "trace_S_star",
     "trace_mismatch",
+    "output_mse",
+    "attention_ce",
+    "attention_entropy",
+    "attention_kl",
 ]
 
 
@@ -164,63 +171,35 @@ def append_pretraining_metric(
     metric: PretrainingMetric,
 ) -> None:
 
-    path = run_dir / "metrics.csv"
+    append_csv_metric(run_dir / "metrics.csv", asdict(metric), PRETRAINING_METRIC_FIELDS)
 
-    write_header = (
-        not path.exists()
-        or path.stat().st_size == 0
-    )
 
-    with open(path, "a", newline="") as f:
-
-        writer = csv.DictWriter(
-            f,
-            fieldnames=(
-                PRETRAINING_METRIC_FIELDS
-            ),
-        )
-
-        if write_header:
+def append_csv_metric(path: Path, metric: dict, fields: list[str]) -> None:
+    """Append with explicit schema, extending legacy CSVs without relabeling values."""
+    exists = path.exists() and path.stat().st_size > 0
+    if exists:
+        with path.open(newline="") as stream:
+            reader = csv.DictReader(stream)
+            old_fields = reader.fieldnames
+            if old_fields != fields:
+                if not set(old_fields or []).issubset(fields):
+                    raise ValueError(f"Incompatible metric schema in {path}")
+                rows = list(reader)
+            else:
+                rows = None
+        if rows is not None:
+            temporary = path.with_suffix(".tmp.csv")
+            with temporary.open("w", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(rows)
+            os.replace(temporary, path)
+    with path.open("a", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields)
+        if not exists:
             writer.writeheader()
+        writer.writerow(metric)
 
-        writer.writerow(
-            {
-                "step": metric.step,
-                "step_over_d": (
-                    metric.step_over_d
-                ),
-                "step_over_d2": (
-                    metric.step_over_d2
-                ),
-                "representation_error": (
-                    metric.representation_error
-                ),
-                "generalization_error": (
-                    metric.generalization_error
-                ),
-                "q": (
-                    metric.q
-                ),
-                "Q": (
-                    metric.Q
-                ),
-                "Q_star": (
-                    metric.Q_star
-                ),
-                "normalized_overlap": (
-                    metric.normalized_overlap
-                ),
-                "trace_S": (
-                    metric.trace_S
-                ),
-                "trace_S_star": (
-                    metric.trace_S_star
-                ),
-                "trace_mismatch": (
-                    metric.trace_mismatch
-                ),
-            }
-        )
 
 def checkpoint_dir(
     run_dir: Path,
@@ -263,6 +242,8 @@ def save_pretraining_checkpoint(
 
     training_state = {
         "step": checkpoint.step,
+        "loss_type": checkpoint.loss_type,
+        "attention_reduction": ATTENTION_REDUCTION,
         "optimizer_state": (
             checkpoint.optimizer_state
         ),
@@ -307,7 +288,12 @@ def save_pretraining_checkpoint(
         "trace_mismatch": (
             checkpoint.trace_mismatch
         ),
-    }   
+        "output_mse": checkpoint.output_mse,
+        "attention_ce": checkpoint.attention_ce,
+        "attention_entropy": checkpoint.attention_entropy,
+        "attention_kl": checkpoint.attention_kl,
+        "loss_type": checkpoint.loss_type,
+    }
 
     with open(
         ckpt_dir / "metrics.json",
@@ -408,6 +394,8 @@ def load_pretraining_checkpoint(
 
     return {
         "step": step,
+        "loss_type": state.get("loss_type", "output_mse"),
+        "attention_reduction": state.get("attention_reduction", ATTENTION_REDUCTION),
 
         "W": W.to(
             device=device,

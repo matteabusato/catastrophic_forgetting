@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import torch
 from torch import Tensor
+
+from src.attention import attention_logits
 
 
 @dataclass
@@ -49,20 +53,16 @@ def sample_teachers(d: int, kappa_star: float, device: str = "cpu", dtype: torch
     return Teachers(W_star=W_star, w1_star=w1_star, w2_star=w2_star,)
 
 
-def teacher_forward(X: Tensor, S: Tensor,) -> Tensor:
-    d = X.shape[-1]
-    T = X.shape[-2]
+def teacher_attention_logits(X: Tensor, S: Tensor) -> Tensor:
+    return attention_logits(X, S)
 
-    A = X @ S @ X.transpose(-1, -2) / d
 
-    # E_X[A] = Tr(S) / d * I_T
-    expectation = (torch.trace(S) / d) * torch.eye(T,dtype=X.dtype,device=X.device,)
+def teacher_attention(X: Tensor, S: Tensor) -> Tensor:
+    return torch.softmax(teacher_attention_logits(X, S), dim=-1)
 
-    A_centered = A - expectation
 
-    attention = torch.softmax(A_centered, dim=-1)
-
-    return attention @ X
+def teacher_forward(X: Tensor, S: Tensor) -> Tensor:
+    return teacher_attention(X, S) @ X
 
 
 def pretraining_teacher(X: Tensor, teachers: Teachers,) -> Tensor:
@@ -81,6 +81,7 @@ def task2_teacher(X: Tensor, teachers: Teachers) -> Tensor:
 class Dataset:
     X: Tensor
     y: Tensor
+    attention_target: Tensor | None = None
 
 
 def sample_inputs(n_samples: int, T: int, d: int, device: str, dtype: torch.dtype,
@@ -99,6 +100,7 @@ def generate_dataset(n_samples: int, T: int, d: int, S_teacher: Tensor, seed: in
     X = sample_inputs(n_samples=n_samples, T=T, d=d, device=device, dtype=dtype, generator=g,)
 
     with torch.no_grad():
-        y = teacher_forward(X, S_teacher)
+        attention_target = teacher_attention(X, S_teacher)
+        y = attention_target @ X
 
-    return Dataset(X=X, y=y)
+    return Dataset(X=X, y=y, attention_target=attention_target)

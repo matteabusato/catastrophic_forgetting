@@ -42,6 +42,8 @@ source ../.venv/bin/activate
 # Shared experiment settings
 # ============================================================
 
+LOSS=${LOSS:-output_mse}
+
 T=5
 
 KAPPA=1.0
@@ -123,6 +125,7 @@ nvidia-smi || true
 # ============================================================
 
 python -u scripts/run_pretraining_quality.py \
+    --loss "${LOSS}" \
     --run-name "${RUN_NAME}" \
     --d "${D}" \
     --T "${T}" \

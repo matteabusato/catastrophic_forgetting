@@ -144,14 +144,15 @@ def get_pretrained_checkpoint(problem):
 
     checkpoints = pretrain(
         model=model,
-        train_data=problem["pretrain_train"],
+        T=problem["T"],
+        eval_every=1,
         test_data=problem["pretrain_test"],
         S_star=problem["teachers"].S_star,
-        n_steps=12,
+        target_step=12,
         lr=5e-2,
         checkpoint_steps=[0, 12],
         seed=0,
-    )
+    ).checkpoints
 
     return checkpoints[-1].W
 
@@ -185,14 +186,15 @@ def test_pretrain_changes_W_and_keeps_w_inactive():
 
     checkpoints = pretrain(
         model=model,
-        train_data=problem["pretrain_train"],
+        T=problem["T"],
+        eval_every=1,
         test_data=problem["pretrain_test"],
         S_star=problem["teachers"].S_star,
-        n_steps=12,
+        target_step=12,
         lr=5e-2,
         checkpoint_steps=[0, 12],
         seed=0,
-    )
+    ).checkpoints
 
     W_after = (
         model.W
@@ -239,14 +241,15 @@ def test_pretraining_checkpoints_are_exact():
 
     checkpoints = pretrain(
         model=model,
-        train_data=problem["pretrain_train"],
+        T=problem["T"],
+        eval_every=1,
         test_data=problem["pretrain_test"],
         S_star=problem["teachers"].S_star,
-        n_steps=10,
+        target_step=10,
         lr=5e-2,
         checkpoint_steps=[0, 10],
         seed=0,
-    )
+    ).checkpoints
 
     # Step 0 should correspond exactly to the initialization.
     assert torch.equal(
@@ -273,14 +276,15 @@ def test_pretraining_checkpoint_metrics_are_finite():
 
     checkpoints = pretrain(
         model=model,
-        train_data=problem["pretrain_train"],
+        T=problem["T"],
+        eval_every=1,
         test_data=problem["pretrain_test"],
         S_star=problem["teachers"].S_star,
-        n_steps=10,
+        target_step=10,
         lr=5e-2,
         checkpoint_steps=[0, 5, 10],
         seed=0,
-    )
+    ).checkpoints
 
     for checkpoint in checkpoints:
 

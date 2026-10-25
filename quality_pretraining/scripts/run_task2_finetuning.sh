@@ -28,6 +28,9 @@ set -euo pipefail
 #       TARGET_STEPS
 #
 #
+# Optional: final argument 7 selects output_mse or attention_ce.
+# Omit it to inherit the source objective.
+#
 # Optional:
 #
 #   sbatch scripts/run_task2_finetuning.sh \
@@ -133,6 +136,11 @@ nvidia-smi || true
 # Run
 # ============================================================
 
+LOSS_ARGS=()
+if [ -n "${7:-}" ]; then
+    LOSS_ARGS=(--loss "${7}")
+fi
+
 python -u scripts/run_task2_finetuning.py \
     --pretrain-run-dir "${PRETRAIN_RUN_DIR}" \
     --pretrain-step "${PRETRAIN_STEP}" \
@@ -142,6 +150,7 @@ python -u scripts/run_task2_finetuning.py \
     --lr "${LR}" \
     --sgd-seed 42 \
     --task2-test-seed 41 \
+    "${LOSS_ARGS[@]}" \
     --device cuda
 
 
