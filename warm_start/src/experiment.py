@@ -63,15 +63,20 @@ class ExperimentResult:
     summary: dict
 
 
-def run_experiment(config: ExperimentConfig,
-                   metric_callback: Callable[[dict], None] | None = None) -> ExperimentResult:
-    """One independent paired replicate; all random streams have recorded seeds."""
+def experiment_seeds(seed: int) -> dict[str, int]:
+    """Stable role-specific seeds, also used to recover interrupted legacy runs."""
     roles = ("teacher", "initialization", "train_data", "test_data",
              "split", "pretraining_order", "final_order")
     # Role-specific streams avoid overlapping RNG seeds across adjacent replicates.
-    seeds = {role: int.from_bytes(hashlib.sha256(
-        f"warm_start:{config.seed}:{role}".encode()).digest()[:8], "big") % (2**63)
+    return {role: int.from_bytes(hashlib.sha256(
+        f"warm_start:{seed}:{role}".encode()).digest()[:8], "big") % (2**63)
         for role in roles}
+
+
+def run_experiment(config: ExperimentConfig,
+                   metric_callback: Callable[[dict], None] | None = None) -> ExperimentResult:
+    """One independent paired replicate; all random streams have recorded seeds."""
+    seeds = experiment_seeds(config.seed)
     dtype = getattr(torch, config.dtype)
     teacher = Teacher(config.d, config.P_teacher, seed=seeds["teacher"],
                       init_scale=config.teacher_scale, dtype=dtype, device=config.device)

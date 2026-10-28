@@ -292,6 +292,65 @@ mid-training resumption. Large datasets will require memory/storage budgeting.
 
 ## Verification and next experiments
 
+### Recover an interrupted legacy fresh_full run
+
+The original runner writes CSV metrics during training but saves model weights
+only after the entire experiment completes. A CSV row is not a checkpoint. If a
+legacy job times out in fresh_full, neither its latest fresh weights nor its
+completed warm weights are guaranteed to have been saved. The completed warm
+metrics remain in the CSV; they cannot reconstruct the warm weights.
+
+`scripts/recover_fresh.py` recovers the fresh trajectory without rerunning the
+warm phases:
+
+```bash
+python3 warm_start/scripts/recover_fresh.py \
+  --run-dir /absolute/path/to/original/timestamped/run \
+  --log-every 1000 --checkpoint-every 1000
+```
+
+It reads the original config and latest valid fresh_full CSV row, recreates the
+teacher, datasets and W0 using the original role-specific seeds, and replays
+fresh updates up to that row without evaluation. It compares the resulting
+train/test MSE to the original CSV before continuing. Replay requires the same
+original algorithm, matching software behavior and preferably the same device
+type. CUDA numerical reproducibility is not universally guaranteed. A mismatch
+raises an error rather than silently treating the replay as the original run.
+This supports the fixed-step runner with early stopping disabled.
+
+After validation it trains to the original absolute fresh target, configurable
+with `--target-steps`. Evaluation spacing can be changed independently of
+training via `--log-every`; full datasets remain in use. During recovery, full,
+A and B metrics share one full-data forward pass instead of repeating overlapping
+evaluations. A/B datasets are not copied. Original outputs are never overwritten.
+
+Outputs are saved under the original run's `fresh_recovery/`:
+
+- `latest.pt`: an atomically replaced, resumable checkpoint including W,
+  optimizer state, current permutation, permutation cursor, generator state,
+  counters and the original configuration. The previous completed checkpoint
+  remains available while a new checkpoint is being written.
+- `metrics_<timestamp>.csv`: one flushed metric segment per recovery invocation.
+- `fresh_final_W.pt`: final recovered fresh weights when the target is reached.
+- `status.json`: recovery progress/status. Slurm's forced termination may leave
+  this marked running; check Slurm accounting for TIMEOUT or other termination.
+
+For subsequent interruptions, resume without replay:
+
+```bash
+python3 warm_start/scripts/recover_fresh.py \
+  --run-dir /absolute/path/to/original/timestamped/run \
+  --resume --log-every 1000 --checkpoint-every 1000
+```
+
+This resumes the latest checkpoint, which may precede the last metric row.
+Each invocation has a separate CSV segment so existing rows are preserved.
+For plotting, concatenate the original `metrics.csv` with the recovery segments
+in timestamp order, then drop duplicate `(phase, updates)` rows keeping the last.
+No completed paired summary or warm checkpoint is fabricated by recovery.
+The original `run_warm_start.py` remains a legacy, non-resumable runner; periodic
+checkpoints described here apply to the fresh recovery script.
+
 ```bash
 python3 -m unittest discover -s warm_start/tests -v
 ```
