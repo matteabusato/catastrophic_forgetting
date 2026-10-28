@@ -103,3 +103,31 @@ python -m pytest tests -q
 Tests cover attention CE gradients and normalization, fixed teacher targets,
 pre-training resume, frozen-base sequential adaptation, CLI checkpoint handoffs
 for both objectives, CSV compatibility, and export of both plotted metrics.
+
+## Resume Task-1 fine-tuning
+
+Use the dedicated continuation command after the existing Task-1 job finishes.
+It restores the latest complete adapter checkpoint, optimizer and data-generator
+state, rebuilds the original fixed test sets, and appends metrics to the same run.
+It inherits the saved objective, learning rate and evaluation interval.
+
+For d=100, continue for another 500d updates and save every 100d:
+
+```bash
+python -u -m scripts.resume_task1_finetuning \
+    --run-dir /absolute/path/to/the/task1/run \
+    --additional-steps 50000 \
+    --checkpoint-every 10000 \
+    --device cuda
+```
+
+From step 50,000 this ends at step 100,000, with new checkpoints at 60,000,
+70,000, 80,000, 90,000 and 100,000. Existing step-zero baselines are retained;
+the adapter is never reinitialized. New checkpoint steps and the target horizon
+are added to config.json, and the continuation is recorded in run_history.jsonl.
+
+The metrics endpoint must match the latest complete saved checkpoint. An
+interrupted run with metrics beyond its last checkpoint is rejected rather than
+silently appending overlapping history. Do not run two continuation jobs against
+the same directory simultaneously. The pre-training run referenced by the
+Task-1 config must remain accessible at its recorded path.

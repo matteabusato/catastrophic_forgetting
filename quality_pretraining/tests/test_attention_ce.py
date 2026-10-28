@@ -224,3 +224,45 @@ def test_plotting_cli_exports_ce_and_mse(tmp_path, monkeypatch):
         assert list(row[0].lines[0].get_ydata()) == pytest.approx([1., .5, 1. / 3])
         assert list(row[1].lines[0].get_ydata()) == pytest.approx([.25, .125, 1. / 12])
     plt.close(fig)
+
+
+@pytest.mark.parametrize('objective', ['attention_ce', 'output_mse'])
+def test_task1_resume_matches_uninterrupted_training(tmp_path, objective):
+    root = tmp_path / 'results'
+    run_script('run_pretraining_quality', '--results-root', root, '--run-name', 'pre',
+               '--loss', objective, '--d', 6, '--T', 3, '--n-test', 6,
+               '--target-steps', 2, '--device', 'cpu')
+    pre = next(root.glob('pre*'))
+    for output, endpoint in [(root / 'split', 4), (root / 'whole', 8)]:
+        run_script('run_task1_finetuning', '--pretrain-run-dir', pre, '--pretrain-step', 2,
+                   '--target-steps', endpoint, '--results-root', output,
+                   '--eval-every', 1, '--device', 'cpu')
+    split = next((root / 'split/finetunetask1_d6_T3').iterdir())
+    whole = next((root / 'whole/finetunetask1_d6_T3').iterdir())
+    original_rows = read_rows(split)
+    run_script('resume_task1_finetuning', '--run-dir', split,
+               '--additional-steps', 4, '--checkpoint-every', 2, '--device', 'cpu')
+    resumed_rows = read_rows(split)
+    assert resumed_rows[:len(original_rows)] == original_rows
+    assert [int(r['finetune_step']) for r in resumed_rows[len(original_rows):]] == [5, 6, 7, 8]
+    for filename in ['w.pt', 'training_state.pt', 'metrics.json']:
+        assert (split / 'checkpoints/step_000000006' / filename).is_file()
+    expected_w = torch.load(whole / 'checkpoints/step_000000008/w.pt', weights_only=True)
+    actual_w = torch.load(split / 'checkpoints/step_000000008/w.pt', weights_only=True)
+    assert torch.equal(actual_w, expected_w)
+    actual_state = torch.load(split / 'checkpoints/step_000000008/training_state.pt', weights_only=False)
+    expected_state = torch.load(whole / 'checkpoints/step_000000008/training_state.pt', weights_only=False)
+    assert torch.equal(actual_state['generator_state'], expected_state['generator_state'])
+    assert actual_state['optimizer_state'] == expected_state['optimizer_state']
+    assert resumed_rows[-1] == read_rows(whole)[-1]
+    assert json.loads((split / 'config.json').read_text())['target_steps'] == 8
+    rejected = run_script('resume_task1_finetuning', '--run-dir', split,
+                           '--additional-steps', 0, '--checkpoint-every', 2, check=False)
+    assert rejected.returncode != 0
+    # Unsaved metric tails must never silently overlap appended continuation rows.
+    with (split / 'metrics.csv').open('a', newline='') as stream:
+        extra = dict(resumed_rows[-1], finetune_step='9')
+        csv.DictWriter(stream, fieldnames=list(resumed_rows[-1])).writerow(extra)
+    rejected = run_script('resume_task1_finetuning', '--run-dir', split,
+                           '--additional-steps', 2, '--checkpoint-every', 2, check=False)
+    assert rejected.returncode != 0 and 'metrics endpoint' in rejected.stderr
