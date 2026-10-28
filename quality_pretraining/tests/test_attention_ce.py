@@ -266,3 +266,55 @@ def test_task1_resume_matches_uninterrupted_training(tmp_path, objective):
     rejected = run_script('resume_task1_finetuning', '--run-dir', split,
                            '--additional-steps', 2, '--checkpoint-every', 2, check=False)
     assert rejected.returncode != 0 and 'metrics endpoint' in rejected.stderr
+
+
+@pytest.mark.parametrize('objective', ['attention_ce', 'output_mse'])
+def test_task2_resume_preserves_dynamics_and_forgetting_baselines(tmp_path, objective):
+    root = tmp_path / 'results'
+    run_script('run_pretraining_quality', '--results-root', root, '--run-name', 'pre',
+               '--loss', objective, '--d', 6, '--T', 3, '--n-test', 6,
+               '--target-steps', 2, '--device', 'cpu')
+    pre = next(root.glob('pre*'))
+    run_script('run_task1_finetuning', '--pretrain-run-dir', pre, '--pretrain-step', 2,
+               '--target-steps', 4, '--results-root', root,
+               '--eval-every', 1, '--device', 'cpu')
+    task1 = next((root / 'finetunetask1_d6_T3').iterdir())
+    for output, endpoint in [(root / 'split', 4), (root / 'whole', 8)]:
+        run_script('run_task2_finetuning', '--pretrain-run-dir', pre, '--pretrain-step', 2,
+                   '--task1-run-dir', task1, '--task1-step', 4,
+                   '--target-steps', endpoint, '--results-root', output,
+                   '--eval-every', 1, '--device', 'cpu')
+    split = next((root / 'split/finetunetask2_d6_T3').iterdir())
+    whole = next((root / 'whole/finetunetask2_d6_T3').iterdir())
+    original_rows = read_rows(split)
+    original_config = json.loads((split / 'config.json').read_text())
+    run_script('resume_task2_finetuning', '--run-dir', split,
+               '--additional-steps', 4, '--checkpoint-every', 2, '--device', 'cpu')
+    resumed_rows = read_rows(split)
+    assert resumed_rows[:len(original_rows)] == original_rows
+    assert [int(r['task2_step']) for r in resumed_rows[len(original_rows):]] == [5, 6, 7, 8]
+    assert (split / 'checkpoints/step_000000006/w.pt').is_file()
+    expected_w = torch.load(whole / 'checkpoints/step_000000008/w.pt', weights_only=True)
+    actual_w = torch.load(split / 'checkpoints/step_000000008/w.pt', weights_only=True)
+    assert torch.equal(actual_w, expected_w)
+    actual_state = torch.load(split / 'checkpoints/step_000000008/training_state.pt', weights_only=False)
+    expected_state = torch.load(whole / 'checkpoints/step_000000008/training_state.pt', weights_only=False)
+    assert torch.equal(actual_state['generator_state'], expected_state['generator_state'])
+    assert actual_state['optimizer_state'] == expected_state['optimizer_state']
+    # Every final metric must match, including all absolute/relative forgetting fields.
+    assert resumed_rows[-1] == read_rows(whole)[-1]
+    new_config = json.loads((split / 'config.json').read_text())
+    for key in ['attention_baselines', 'pretraining_error_before_task1',
+                'pretraining_error_before_task2', 'task1_error_before_task2']:
+        assert new_config[key] == original_config[key]
+    assert new_config['target_steps'] == 8
+    assert abs(float(resumed_rows[-1]['forgetting_task1_attention_ce'])) > 1e-10
+    # No baseline resets: the final forgetting is still relative to the original switch.
+    assert float(resumed_rows[-1]['forgetting_task1_attention_ce']) == pytest.approx(
+        float(resumed_rows[-1]['task1_attention_ce']) - float(original_rows[0]['task1_attention_ce']))
+    with (split / 'metrics.csv').open('a', newline='') as stream:
+        extra = dict(resumed_rows[-1], task2_step='9')
+        csv.DictWriter(stream, fieldnames=list(resumed_rows[-1])).writerow(extra)
+    rejected = run_script('resume_task2_finetuning', '--run-dir', split,
+                           '--additional-steps', 2, '--checkpoint-every', 2, check=False)
+    assert rejected.returncode != 0 and 'metrics endpoint' in rejected.stderr

@@ -131,3 +131,26 @@ interrupted run with metrics beyond its last checkpoint is rejected rather than
 silently appending overlapping history. Do not run two continuation jobs against
 the same directory simultaneously. The pre-training run referenced by the
 Task-1 config must remain accessible at its recorded path.
+
+## Resume Task-2 fine-tuning
+
+After the original Task-2 job completes, use:
+
+```bash
+python -u -m scripts.resume_task2_finetuning \
+    --run-dir /absolute/path/to/the/task2/run \
+    --additional-steps 20000 \
+    --checkpoint-every 10000 \
+    --device cuda
+```
+
+For d=100, this adds 200d updates, saving every 100d. From step 100,000 it
+continues to step 120,000 and saves at 110,000 and 120,000. The adapter,
+optimizer and generator states are restored; W stays frozen. Both the original
+MSE forgetting baselines and the attention baselines are retained from the run
+configuration. Continuation never resets forgetting to zero at the resume point.
+All metrics are appended, and the original task-switch row is preserved, so
+existing plotting cells continue to work with their automatic time limits.
+
+The latest complete checkpoint must match the metrics endpoint. The same
+completed-run and source-path requirements described for Task 1 apply here.
