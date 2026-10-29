@@ -292,6 +292,60 @@ mid-training resumption. Large datasets will require memory/storage budgeting.
 
 ## Verification and next experiments
 
+### Continue both completed SGD models toward a training-loss target
+
+For completed legacy runs, `scripts/continue_training.py` loads each regime's
+final weights from `seed_<seed>/weights.pt` and its original saved datasets.
+It validates the loaded model's train/test losses against the original endpoint
+CSV row. For plain SGD without momentum, no optimizer memory is missing: it
+reconstructs the shuffled-data cursor by advancing the original permutation RNG
+without replaying model updates. This assumes the original permutation behavior
+(same software/device type). Weight-only Adam continuation is rejected because
+its optimizer moments were not saved.
+
+```bash
+python3 warm_start/scripts/continue_training.py \
+  --run-dir /absolute/path/to/original/timestamped/run \
+  --regime warm --target-steps 4000000 --loss-tolerance 1e-8 \
+  --log-every 1000 --checkpoint-every 1000
+
+python3 warm_start/scripts/continue_training.py \
+  --run-dir /absolute/path/to/original/timestamped/run \
+  --regime fresh --target-steps 4000000 --loss-tolerance 1e-8 \
+  --log-every 1000 --checkpoint-every 1000
+```
+
+Each regime continues training only on the same fixed A union B dataset, with
+the original optimizer, batch size and learning rate. The warm-up on A is not
+repeated. `target-steps` is the absolute number of full-data updates, excluding
+the warm-up. For the 800000-update run, a 4000000 cap allows another 3200000
+updates per model. The script evaluates stopping at log points and stops only
+when the full training MSE is at most the requested tolerance or the cap is
+reached. Test metrics are logged but never used for stopping. There is no plateau
+criterion, and reaching the cap is explicitly reported as `step_cap`, not as
+convergence. Constant-learning-rate SGD may need a changed optimization schedule
+if a nonzero error floor is observed; the script does not silently change it.
+
+Each regime has its own directory, `continuation/warm/` or `continuation/fresh/`,
+so they may run as separate Slurm array tasks. Do not launch two jobs for the
+same regime and output directory simultaneously. Atomically saved `latest.pt`
+files contain full optimizer/RNG/permutation state. Submit the same command to
+resume after interruption; it automatically prefers its latest continuation
+checkpoint. For fresh models it can also import a `fresh_recovery/latest.pt`
+checkpoint, including optimizer state. A legacy run with no warm weights cannot
+be resumed from CSV alone and is rejected explicitly.
+
+Additional outputs are timestamped CSV metric segments, invocation settings,
+`summary.json` (stop reason, achieved train/test loss and step), and `status.json`.
+Previous run artifacts are preserved. If the cap is reached, increase
+`--target-steps` and submit again. For plotting, include these files after the
+original and recovery metrics, then deduplicate `(phase, updates)` keeping last:
+
+```python
+files += sorted((RUN_DIR / "continuation" / "warm").glob("metrics_*.csv"))
+files += sorted((RUN_DIR / "continuation" / "fresh").glob("metrics_*.csv"))
+```
+
 ### Recover an interrupted legacy fresh_full run
 
 The original runner writes CSV metrics during training but saves model weights

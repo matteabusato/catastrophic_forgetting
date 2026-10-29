@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import math
 from pathlib import Path
 
 import torch
@@ -63,6 +64,29 @@ class FreshTrainer:
             "completed_epochs": self.completed_epochs, "examples_seen": self.examples_seen,
             "batch_size": self.batch_size, "n_samples": len(self.data),
         }
+
+    def restore_sgd_sampler(self, step: int) -> None:
+        """Recover cursor/RNG from a completed legacy plain-SGD weight snapshot.
+
+        This does not replay weight updates. Vanilla SGD has no optimizer memory;
+        optimizers with momentum/Adam must instead load a complete checkpoint.
+        Call only on a newly initialized trainer using the original order seed.
+        """
+        if not isinstance(self.optimizer, torch.optim.SGD) or any(
+            group.get("momentum", 0) != 0 for group in self.optimizer.param_groups
+        ):
+            raise ValueError("Weight-only continuation requires plain SGD without momentum.")
+        if self.step != 0 or self.order is not None or step < 0:
+            raise ValueError("Sampler restoration requires a new trainer and nonnegative step.")
+        batches = math.ceil(len(self.data) / self.batch_size)
+        for _ in range(math.ceil(step / batches)):
+            self.order = torch.randperm(len(self.data), generator=self.generator,
+                                        device=self.model.W.device)
+        completed, remaining = divmod(step, batches)
+        self.position = (remaining * self.batch_size if remaining
+                         else len(self.data) if step else 0)
+        self.step, self.completed_epochs = step, completed
+        self.examples_seen = completed * len(self.data) + remaining * self.batch_size
 
     def load_state_dict(self, state: dict) -> None:
         if state["batch_size"] != self.batch_size or state["n_samples"] != len(self.data):
