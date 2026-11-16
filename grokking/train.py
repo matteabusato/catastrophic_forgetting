@@ -12,11 +12,13 @@ number of extra updates for resumed runs.  Every phase is started manually.
 Dependencies: torch, wandb (unless --wandb-mode disabled). Python >=3.9.
 
 Nanda-style baseline: addition mod 113, 30% fixed split, one layer,
-4 attention heads, 128 residual width, 512 ReLU MLP, no biases/norm/dropout,
-full-batch AdamW (lr 1e-3, betas .9/.98, weight_decay 1).
-Deliberate deviation: the input is [a, operation, b, '='] so the same model
-can later learn subtraction.  This 4-token variant is NOT an exact Nanda
-reproduction; grokking is an experimental outcome, not guaranteed.
+4 attention heads, 128 residual width, 512 ReLU MLP, zero-initialized MLP
+biases, no LayerNorm/dropout, full-batch AdamW (lr 1e-3, betas .9/.98,
+weight_decay 1). The model uses Nanda et al.'s initialization distributions.
+Deliberate deviation: the input is [a, b, operator], with '+' or '-' in the
+last position, rather than Nanda's [a, b, '=']. Output logits cover numbers
+0..112 (not operation tokens), so this remains an *adaptation*, not a bit-for-
+bit reproduction of the paper. The dataset split and optimizer stay unchanged.
 """
 
 import argparse
@@ -40,22 +42,34 @@ class OneLayerTransformer(nn.Module):
         if d_model % heads:
             raise ValueError("d_model must be divisible by heads")
         self.p, self.heads = p, heads
-        # Number tokens 0..p-1; '+': p; '-': p+1; '=': p+2
-        self.token = nn.Embedding(p + 3, d_model)
-        self.position = nn.Parameter(torch.empty(4, d_model))
+        # Numbers 0..p-1, '+' at p and '-' at p+1. Three positions: [a, b, +/-].
+        self.token = nn.Embedding(p + 2, d_model)
+        self.position = nn.Parameter(torch.empty(3, d_model))
         self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)
         self.attn_out = nn.Linear(d_model, d_model, bias=False)
-        self.mlp_in = nn.Linear(d_model, d_mlp, bias=False)
-        self.mlp_out = nn.Linear(d_mlp, d_model, bias=False)
+        self.mlp_in = nn.Linear(d_model, d_mlp, bias=True)
+        self.mlp_out = nn.Linear(d_mlp, d_model, bias=True)
         self.unembed = nn.Linear(d_model, p, bias=False)
-        # The legacy TransformerLens toy-model initialization scale.
-        for param in self.parameters():
-            nn.init.normal_(param, std=0.8 / math.sqrt(d_model))
+
+        # Nanda et al., progress-measures-paper/transformers.py:
+        # W_E, W_pos, W_{Q,K,V,O}, W_in and W_out ~ N(0, 1/d_model),
+        # W_U ~ N(0, 1/d_vocab); MLP biases start at zero.
+        # Our extended input vocabulary has d_vocab=p+2 (113 numbers + +/-).
+        # The qkv rows are equivalent to separate Q, K and V matrices.
+        with torch.no_grad():
+            for tensor in (self.token.weight, self.position,
+                           self.qkv.weight, self.attn_out.weight,
+                           self.mlp_in.weight, self.mlp_out.weight):
+                nn.init.normal_(tensor, mean=0.0, std=1.0 / math.sqrt(d_model))
+            nn.init.normal_(self.unembed.weight, mean=0.0,
+                            std=1.0 / math.sqrt(p + 2))
+            nn.init.zeros_(self.mlp_in.bias)
+            nn.init.zeros_(self.mlp_out.bias)
 
     def forward(self, tokens):
         batch, length = tokens.shape
-        if length != 4:
-            raise ValueError("Expected [a, operator, b, =] (4 tokens)")
+        if length != 3:
+            raise ValueError("Expected [a, b, operator] (3 tokens)")
         x = self.token(tokens) + self.position[None, :, :]
         n_heads = self.heads
         d_head = x.shape[-1] // n_heads
@@ -69,7 +83,7 @@ class OneLayerTransformer(nn.Module):
         attn = attn.transpose(1, 2).contiguous().view(batch, length, -1)
         x = x + self.attn_out(attn)
         x = x + self.mlp_out(F.relu(self.mlp_in(x)))
-        return self.unembed(x[:, -1, :])  # Only predict the answer after '='.
+        return self.unembed(x[:, -1, :])  # Answer predicted at the final +/- token.
 
 
 def make_data(p, fraction, split_seed, device):
@@ -84,8 +98,7 @@ def make_data(p, fraction, split_seed, device):
     data = {}
     for task, operator in (("A", p), ("B", p + 1)):
         answers = ((a + b) if task == "A" else (a - b)) % p
-        tokens = torch.stack((a, torch.full_like(a, operator), b,
-                              torch.full_like(a, p + 2)), dim=1)
+        tokens = torch.stack((a, b, torch.full_like(a, operator)), dim=1)
         data[task] = {
             "train_x": tokens[train_ids].to(device),
             "train_y": answers[train_ids].to(device),
@@ -246,7 +259,15 @@ def main():
         config = {"p": args.p, "d_model": 128, "heads": 4, "d_mlp": 512,
                   "fraction": args.train_fraction, "seed": args.seed,
                   "split_seed": args.split_seed, "lr": args.lr, "weight_decay": args.weight_decay,
-                  "betas": (0.9, 0.98), "input_format": "a,operator,b,equals"}
+                  "betas": (0.9, 0.98), "input_format": "a,b,operator",
+                  "init_scheme": "nanda-2023", "model_version": 2}
+    # Prevent silently mixing old 4-token checkpoints with this 3-token model.
+    if config.get("input_format") != "a,b,operator" or config.get("model_version") != 2:
+        raise ValueError(
+            "Checkpoint uses the old 4-token/different-initialization model. "
+            "Please train Phase A again in a NEW run directory with this version. "
+            "Existing grokking/runs/a_seed0 checkpoints must not be reused."
+        )
     if args.steps < start_step:
         raise ValueError(f"Requested --steps={args.steps} is before resume step {start_step}")
 
