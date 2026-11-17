@@ -5,6 +5,7 @@ From the catastrophic_forgetting repository root:
   python grokking/train.py --phase a --run-dir grokking/runs/a_seed0
   python grokking/train.py --phase joint --run-dir grokking/runs/joint_seed0
   python grokking/train.py --phase b --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000
+  python grokking/train.py --phase b --b-operation sum_plus_one --checkpoint grokking/runs/a_seed0/checkpoints/step_001000.pt --run-dir grokking/runs/shift_from_1000
   python grokking/train.py --phase a_control --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/a_control_from_5000
   python grokking/train.py --phase b --resume grokking/runs/b_from_5000/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000 --steps 40000
 
@@ -19,7 +20,9 @@ weight_decay 1). The model uses Nanda et al.'s initialization distributions.
 Deliberate deviation: the input is [a, b, operator], with '+' or '-' in the
 last position, rather than Nanda's [a, b, '=']. Output logits cover numbers
 0..112 (not operation tokens), so this remains an *adaptation*, not a bit-for-
-bit reproduction of the paper. The dataset split and optimizer stay unchanged.
+bit reproduction of the paper. The dataset split and optimizer stay unchanged. The unused `-` input token
+can also serve as a B-task identifier for shifted addition, allowing existing
+addition checkpoints to be reused without changing the architecture.
 """
 
 import argparse
@@ -87,8 +90,10 @@ class OneLayerTransformer(nn.Module):
         return self.unembed(x[:, -1, :])  # Answer predicted at the final +/- token.
 
 
-def make_data(p, fraction, split_seed, device):
+def make_data(p, fraction, split_seed, device, b_operation="subtract"):
     """Use the SAME pair split for A and B, so B train never reveals A test pairs."""
+    if b_operation not in ("subtract", "sum_plus_one"):
+        raise ValueError(f"Unrecognized B operation: {b_operation}")
     a = torch.arange(p).repeat_interleave(p)
     b = torch.arange(p).repeat(p)
     n = p * p
@@ -98,7 +103,12 @@ def make_data(p, fraction, split_seed, device):
     train_ids, test_ids = order[:n_train], order[n_train:]
     data = {}
     for task, operator in (("A", p), ("B", p + 1)):
-        answers = ((a + b) if task == "A" else (a - b)) % p
+        if task == "A":
+            answers = (a + b) % p
+        elif b_operation == "subtract":
+            answers = (a - b) % p
+        else:
+            answers = (a + b + 1) % p
         tokens = torch.stack((a, b, torch.full_like(a, operator)), dim=1)
         data[task] = {
             "train_x": tokens[train_ids].to(device),
@@ -189,6 +199,9 @@ def arguments():
     parser.add_argument("--phase", choices=("a", "b", "a_control", "joint"), required=True,
                         help="a: addition baseline; b: subtraction only; a_control: continue A; joint: train A+B equally from scratch")
     parser.add_argument("--run-dir", type=Path, required=True)
+    parser.add_argument("--b-operation", choices=("subtract", "sum_plus_one"), default=None,
+                        help="B labels: (a-b) mod p (default) or (a+b+1) mod p. "
+                             "Reuses the existing '-' input token as B task identifier.")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--checkpoint", type=Path, help="Branch from a manually selected A checkpoint")
     source.add_argument("--resume", type=Path, help="Resume interrupted SAME phase, preserving optimizer/RNG")
@@ -214,6 +227,8 @@ def arguments():
 
 def main():
     args = arguments()
+    if args.phase in ("a", "a_control") and args.b_operation is not None:
+        raise ValueError("--b-operation is only meaningful for Phase b or joint")
     if args.steps <= 0 or args.eval_every <= 0 or args.checkpoint_every <= 0:
         raise ValueError("--steps, --eval-every and --checkpoint-every must be positive")
     if not 0 < args.train_fraction < 1:
@@ -239,7 +254,10 @@ def main():
         start_step = int(ckpt["step"])
         origin = ckpt["origin"]
         wandb_id = ckpt.get("wandb_id")
-        config = ckpt["config"]
+        config = dict(ckpt["config"])
+        previous_b_op = config.get("b_operation", "subtract")
+        if args.b_operation is not None and args.b_operation != previous_b_op:
+            raise ValueError("Cannot change B operation when resuming an existing run")
     elif args.checkpoint:
         ckpt = load_checkpoint(args.checkpoint)
         if ckpt["phase"] != "a":
@@ -249,7 +267,8 @@ def main():
         start_step = 0
         origin = {"checkpoint": str(args.checkpoint.resolve()), "parent_step": ckpt["step"]}
         wandb_id = None
-        config = ckpt["config"]
+        config = dict(ckpt["config"])
+        config["b_operation"] = args.b_operation or "subtract"
     else:
         ckpt = None
         if args.run_dir.exists() and any(args.run_dir.iterdir()):
@@ -261,7 +280,8 @@ def main():
                   "fraction": args.train_fraction, "seed": args.seed,
                   "split_seed": args.split_seed, "lr": args.lr, "weight_decay": args.weight_decay,
                   "betas": (0.9, 0.98), "input_format": "a,b,operator",
-                  "init_scheme": "nanda-2023", "model_version": 2}
+                  "init_scheme": "nanda-2023", "model_version": 2,
+                  "b_operation": args.b_operation or "subtract"}
     # Prevent silently mixing old 4-token checkpoints with this 3-token model.
     if config.get("input_format") != "a,b,operator" or config.get("model_version") != 2:
         raise ValueError(
@@ -289,12 +309,15 @@ def main():
         if args.resume:
             put_rng_state(ckpt["rng"])
 
-    data, n_train, n_test = make_data(config["p"], config["fraction"], config["split_seed"], device)
+    data, n_train, n_test = make_data(config["p"], config["fraction"], config["split_seed"], device,
+                                     b_operation=config.get("b_operation", "subtract"))
     train_task = "B" if args.phase == "b" else ("joint" if args.phase == "joint" else "A")
     frozen_op = config["p"] if train_task == "B" else config["p"] + 1
     eval_tasks = ("A",) if args.phase == "a" else ("A", "B")
     print(f"Phase={args.phase}, device={device}, model parameters={sum(t.numel() for t in model.parameters()):,}", flush=True)
     print(f"p={config['p']}, train={n_train}, test={n_test}, initial_step={start_step}, target_step={args.steps}", flush=True)
+    if args.phase in ("b", "joint"):
+        print(f"B task operation={config.get('b_operation', 'subtract')} (input token '-' marks B)", flush=True)
     if args.phase == "joint":
         print("Joint A+B: 50/50 mean train CE; both operator embeddings are trainable", flush=True)
     else:
