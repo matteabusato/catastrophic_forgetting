@@ -6,6 +6,7 @@ From the catastrophic_forgetting repository root:
   python grokking/train.py --phase joint --run-dir grokking/runs/joint_seed0
   python grokking/train.py --phase b --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000
   python grokking/train.py --phase b --b-operation sum_plus_one --checkpoint grokking/runs/a_seed0/checkpoints/step_001000.pt --run-dir grokking/runs/shift_from_1000
+  python grokking/train.py --phase b --b-operation two_a_plus_b --checkpoint grokking/runs/a_seed0/checkpoints/step_001000.pt --run-dir grokking/runs/linear_from_1000
   python grokking/train.py --phase a_control --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/a_control_from_5000
   python grokking/train.py --phase b --resume grokking/runs/b_from_5000/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000 --steps 40000
 
@@ -20,9 +21,9 @@ weight_decay 1). The model uses Nanda et al.'s initialization distributions.
 Deliberate deviation: the input is [a, b, operator], with '+' or '-' in the
 last position, rather than Nanda's [a, b, '=']. Output logits cover numbers
 0..112 (not operation tokens), so this remains an *adaptation*, not a bit-for-
-bit reproduction of the paper. The dataset split and optimizer stay unchanged. The unused `-` input token
-can also serve as a B-task identifier for shifted addition, allowing existing
-addition checkpoints to be reused without changing the architecture.
+bit reproduction of the paper. The dataset split and optimizer stay unchanged. The unused `-` input token can also serve as a B-task identifier for shifted
+addition or (2*a+b) mod p, allowing existing addition checkpoints to be reused
+without changing the architecture.  It is NOT arithmetic subtraction for these runs.
 """
 
 import argparse
@@ -92,7 +93,7 @@ class OneLayerTransformer(nn.Module):
 
 def make_data(p, fraction, split_seed, device, b_operation="subtract"):
     """Use the SAME pair split for A and B, so B train never reveals A test pairs."""
-    if b_operation not in ("subtract", "sum_plus_one"):
+    if b_operation not in ("subtract", "sum_plus_one", "two_a_plus_b"):
         raise ValueError(f"Unrecognized B operation: {b_operation}")
     a = torch.arange(p).repeat_interleave(p)
     b = torch.arange(p).repeat(p)
@@ -107,8 +108,12 @@ def make_data(p, fraction, split_seed, device, b_operation="subtract"):
             answers = (a + b) % p
         elif b_operation == "subtract":
             answers = (a - b) % p
-        else:
+        elif b_operation == "sum_plus_one":
             answers = (a + b + 1) % p
+        elif b_operation == "two_a_plus_b":
+            answers = (2 * a + b) % p
+        else:
+            raise AssertionError(f"Unexpected B operation: {b_operation}")
         tokens = torch.stack((a, b, torch.full_like(a, operator)), dim=1)
         data[task] = {
             "train_x": tokens[train_ids].to(device),
@@ -197,11 +202,12 @@ def optimizer_step_with_frozen_token(model, optimizer, op_token):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--phase", choices=("a", "b", "a_control", "joint"), required=True,
-                        help="a: addition baseline; b: subtraction only; a_control: continue A; joint: train A+B equally from scratch")
+                        help="a: addition baseline; b: chosen B operation only; a_control: continue A; joint: train A+B equally from scratch")
     parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--b-operation", choices=("subtract", "sum_plus_one"), default=None,
-                        help="B labels: (a-b) mod p (default) or (a+b+1) mod p. "
-                             "Reuses the existing '-' input token as B task identifier.")
+    parser.add_argument("--b-operation", choices=("subtract", "sum_plus_one", "two_a_plus_b"), default=None,
+                        help="B labels: (a-b) mod p (default), (a+b+1) mod p, "
+                             "or (2*a+b) mod p. Reuses the existing '-' token "
+                             "as B task identifier.")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--checkpoint", type=Path, help="Branch from a manually selected A checkpoint")
     source.add_argument("--resume", type=Path, help="Resume interrupted SAME phase, preserving optimizer/RNG")
