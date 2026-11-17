@@ -3,6 +3,7 @@
 
 From the catastrophic_forgetting repository root:
   python grokking/train.py --phase a --run-dir grokking/runs/a_seed0
+  python grokking/train.py --phase joint --run-dir grokking/runs/joint_seed0
   python grokking/train.py --phase b --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000
   python grokking/train.py --phase a_control --checkpoint grokking/runs/a_seed0/checkpoints/step_005000.pt --run-dir grokking/runs/a_control_from_5000
   python grokking/train.py --phase b --resume grokking/runs/b_from_5000/checkpoints/step_005000.pt --run-dir grokking/runs/b_from_5000 --steps 40000
@@ -185,8 +186,8 @@ def optimizer_step_with_frozen_token(model, optimizer, op_token):
 
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--phase", choices=("a", "b", "a_control"), required=True,
-                        help="a: addition baseline; b: subtraction only; a_control: continue A")
+    parser.add_argument("--phase", choices=("a", "b", "a_control", "joint"), required=True,
+                        help="a: addition baseline; b: subtraction only; a_control: continue A; joint: train A+B equally from scratch")
     parser.add_argument("--run-dir", type=Path, required=True)
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--checkpoint", type=Path, help="Branch from a manually selected A checkpoint")
@@ -217,11 +218,11 @@ def main():
         raise ValueError("--steps, --eval-every and --checkpoint-every must be positive")
     if not 0 < args.train_fraction < 1:
         raise ValueError("--train-fraction must be in (0,1)")
-    if args.phase == "a" and args.checkpoint:
-        raise ValueError("Phase a starts from scratch; use --resume to continue an existing run")
-    if args.phase != "a" and not (args.checkpoint or args.resume):
+    if args.phase in ("a", "joint") and args.checkpoint:
+        raise ValueError("Phase a/joint starts from scratch; use --resume to continue an existing run")
+    if args.phase in ("b", "a_control") and not (args.checkpoint or args.resume):
         raise ValueError("Phase b or a_control requires --checkpoint (or --resume)")
-    if args.reset_optimizer and (args.phase == "a" or args.resume):
+    if args.reset_optimizer and (args.phase in ("a", "joint") or args.resume):
         raise ValueError("--reset-optimizer is only supported for branching from --checkpoint")
     device = "cuda" if (args.device == "auto" and torch.cuda.is_available()) else (
         "cpu" if args.device == "auto" else args.device
@@ -289,12 +290,15 @@ def main():
             put_rng_state(ckpt["rng"])
 
     data, n_train, n_test = make_data(config["p"], config["fraction"], config["split_seed"], device)
-    train_task = "B" if args.phase == "b" else "A"
+    train_task = "B" if args.phase == "b" else ("joint" if args.phase == "joint" else "A")
     frozen_op = config["p"] if train_task == "B" else config["p"] + 1
     eval_tasks = ("A",) if args.phase == "a" else ("A", "B")
     print(f"Phase={args.phase}, device={device}, model parameters={sum(t.numel() for t in model.parameters()):,}", flush=True)
     print(f"p={config['p']}, train={n_train}, test={n_test}, initial_step={start_step}, target_step={args.steps}", flush=True)
-    print(f"Frozen operator embedding id={frozen_op}, optimizer={'reset' if args.reset_optimizer else 'inherited / fresh'}", flush=True)
+    if args.phase == "joint":
+        print("Joint A+B: 50/50 mean train CE; both operator embeddings are trainable", flush=True)
+    else:
+        print(f"Frozen operator embedding id={frozen_op}, optimizer={'reset' if args.reset_optimizer else 'inherited / fresh'}", flush=True)
 
     wandb = None
     if args.wandb_mode != "disabled":
@@ -327,11 +331,20 @@ def main():
         for step in range(start_step + 1, args.steps + 1):
             model.train()
             optimizer.zero_grad(set_to_none=True)
-            d = data[train_task]
-            logits = model(d["train_x"])
-            loss = F.cross_entropy(logits, d["train_y"])
-            loss.backward()
-            optimizer_step_with_frozen_token(model, optimizer, frozen_op)
+            if args.phase == "joint":
+                d_a, d_b = data["A"], data["B"]
+                # One full-batch update over both task datasets, weighted equally.
+                logits = model(torch.cat((d_a["train_x"], d_b["train_x"]), dim=0))
+                labels = torch.cat((d_a["train_y"], d_b["train_y"]), dim=0)
+                loss = F.cross_entropy(logits, labels)
+                loss.backward()
+                optimizer.step()  # Both +/- embeddings actively trained.
+            else:
+                d = data[train_task]
+                logits = model(d["train_x"])
+                loss = F.cross_entropy(logits, d["train_y"])
+                loss.backward()
+                optimizer_step_with_frozen_token(model, optimizer, frozen_op)
             should_log = step % args.eval_every == 0 or step == args.steps
             should_save = step % args.checkpoint_every == 0 or step == args.steps
             if should_log or should_save:
@@ -340,11 +353,18 @@ def main():
                     if wandb:
                         wandb.log(metrics, step=step)
                     elapsed = time.monotonic() - last_log
-                    message = f"step {step:6d}  {train_task} train/test CE="
-                    message += f"{metrics[f'{train_task}/train_loss']:.4f}/{metrics[f'{train_task}/test_loss']:.4f}"
-                    message += f"  acc={metrics[f'{train_task}/train_accuracy']:.3f}/{metrics[f'{train_task}/test_accuracy']:.3f}"
-                    if args.phase != "a":
-                        message += f"  A test acc={metrics['A/test_accuracy']:.3f}"
+                    if args.phase == "joint":
+                        message = (f"step {step:6d}  "
+                                   f"A train/test CE={metrics['A/train_loss']:.4f}/{metrics['A/test_loss']:.4f}"
+                                   f" acc={metrics['A/train_accuracy']:.3f}/{metrics['A/test_accuracy']:.3f}  "
+                                   f"B train/test CE={metrics['B/train_loss']:.4f}/{metrics['B/test_loss']:.4f}"
+                                   f" acc={metrics['B/train_accuracy']:.3f}/{metrics['B/test_accuracy']:.3f}")
+                    else:
+                        message = f"step {step:6d}  {train_task} train/test CE="
+                        message += f"{metrics[f'{train_task}/train_loss']:.4f}/{metrics[f'{train_task}/test_loss']:.4f}"
+                        message += f"  acc={metrics[f'{train_task}/train_accuracy']:.3f}/{metrics[f'{train_task}/test_accuracy']:.3f}"
+                        if args.phase != "a":
+                            message += f"  A test acc={metrics['A/test_accuracy']:.3f}"
                     print(message + f"  ({elapsed:.1f}s since log)", flush=True)
                     last_log = time.monotonic()
                 if should_save:
