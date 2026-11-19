@@ -1,0 +1,35 @@
+experiment:
+  name: cifar100_sequential_features
+  output_dir: ./results
+  checkpoint_dir: ./checkpoints
+  data_dir: ./data
+  seeds: [17]
+
+data:
+  training_tasks: [aquatic_mammals, fish, large_carnivores, small_mammals]
+  probe_tasks: [medium_sized_mammals, vehicles_2]
+  train_examples_per_task: 2500
+  probe_examples_per_class: 50
+  num_workers: 4
+  download: true
+
+training:
+  epochs_per_task: 40
+  batch_size: 128
+  learning_rate: 0.05
+  momentum: 0.9
+  weight_decay: 0.0005
+  amp: true
+
+probe:
+  linear_epochs: 30
+  finetune_epochs: 30
+  batch_size: 128
+  linear_learning_rate: 0.1
+  finetune_backbone_learning_rate: 0.001
+  finetune_head_learning_rate: 0.01
+  weight_decay: 0.0005
+  amp: true
+
+baseline:
+  last_task_only_epochs: 40

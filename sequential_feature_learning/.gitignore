@@ -1,0 +1,7 @@
+data/
+checkpoints/
+results/
+logs/
+__pycache__/
+*.py[cod]
+.DS_Store
