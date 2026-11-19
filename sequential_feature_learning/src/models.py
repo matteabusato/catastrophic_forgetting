@@ -16,7 +16,8 @@ class CIFARResNet18(nn.Module):
         self.heads = nn.ModuleDict()
 
     def add_head(self, task: str, num_classes: int = 5, initial_state=None):
-        head = nn.Linear(512, num_classes)
+        # Heads are often added after the model has already been moved to CUDA.
+        head = nn.Linear(512, num_classes).to(next(self.backbone.parameters()).device)
         if initial_state is not None:
             head.load_state_dict(initial_state)
         self.heads[task] = head
