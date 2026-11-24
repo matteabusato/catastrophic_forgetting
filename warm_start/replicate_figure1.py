@@ -393,29 +393,46 @@ def plot_curves(output_dir: Path, rows: List[Dict[str, object]]) -> None:
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), constrained_layout=True)
-    colors = {"warm_start": "#2878B5", "cold_start": "#E87500"}
-    labels = {"warm_start": "Warm start", "cold_start": "Cold start"}
+    series = (
+        ("half_only", "50% data (pretraining stage)", "#78A9D1", "--"),
+        ("warm_continued", "Warm start, then full data", "#165A91", "-"),
+        ("cold_start", "Full data from scratch", "#E87500", "-"),
+    )
     for ax, metric, ylabel in (
         (axes[0], "heldout_accuracy", "Held-out accuracy"),
         (axes[1], "train_accuracy", "Training accuracy"),
     ):
-        for method in ("warm_start", "cold_start"):
-            method_rows = [r for r in rows if r["method"] == method]
+        for series_name, label, color, linestyle in series:
+            if series_name == "half_only":
+                method_rows = [
+                    r for r in rows if r["method"] == "warm_start" and r["stage"] == "half_data"
+                ]
+            elif series_name == "warm_continued":
+                method_rows = [
+                    r for r in rows if r["method"] == "warm_start" and r["stage"] == "full_data"
+                ]
+            else:
+                method_rows = [r for r in rows if r["method"] == "cold_start"]
             by_seed: Dict[int, Dict[int, float]] = {}
             for row in method_rows:
-                by_seed.setdefault(int(row["seed"]), {})[int(row["epoch"])] = float(row[metric])
+                epoch = int(row["epoch"])
+                if series_name == "warm_continued":
+                    epoch -= EPOCHS_PER_WARM_STAGE
+                by_seed.setdefault(int(row["seed"]), {})[epoch] = float(row[metric])
             common_epochs = sorted(set.intersection(*(set(v) for v in by_seed.values())))
             values = np.asarray(
                 [[by_seed[seed][epoch] for epoch in common_epochs] for seed in sorted(by_seed)]
             )
             mean = values.mean(axis=0)
             std = values.std(axis=0, ddof=1) if values.shape[0] > 1 else np.zeros_like(mean)
-            ax.plot(common_epochs, mean, color=colors[method], label=labels[method])
+            if series_name == "warm_continued":
+                common_epochs = [epoch + EPOCHS_PER_WARM_STAGE for epoch in common_epochs]
+            ax.plot(common_epochs, mean, color=color, linestyle=linestyle, label=label)
             ax.fill_between(
                 common_epochs,
                 np.maximum(0.0, mean - std),
                 np.minimum(1.0, mean + std),
-                color=colors[method],
+                color=color,
                 alpha=0.18,
             )
         if metric == "heldout_accuracy":
