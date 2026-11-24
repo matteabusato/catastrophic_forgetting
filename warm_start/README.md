@@ -29,6 +29,34 @@ Set `CIFAR10_ROOT` to use another data location. The script writes per-seed
 curves and checkpoints, `summary_by_seed.csv`, and (when matplotlib is
 installed) `figure1_replication.png` under `warm_start/outputs`.
 
+## Seed-0 ELR re-warming continuations
+
+The two continuation jobs start from
+`outputs/seed_00/warm_after_half.pt`, the saved model after the first 350
+half-data epochs. Each then trains on the same full-data fit split for 700
+epochs with a fresh Adam state. The LR jumps from the baseline `1e-3` to
+`1e-2` at the transition and follows a cosine decay to `1e-3` over those 700
+epochs. This one-shot schedule adapts the ELR re-warming idea to our longer
+Ash–Adams run; it is not the exact cyclic schedule or 70+70 duration used in
+the later paper.
+
+`lr_rewarm` changes the LR only. `lr_rewarm_project` uses the same schedule
+and, after every optimizer update, projects each convolutional and linear
+weight tensor to its norm at seed-0 random initialization. The latter tests
+whether controlling norm growth helps the re-warmed LR continue to produce
+feature changes. BatchNorm parameters and buffers are not projected.
+
+Submit the jobs independently from the repository root:
+
+```bash
+sbatch warm_start/run_seed0_lr_rewarm_izar.sh
+sbatch warm_start/run_seed0_lr_rewarm_project_izar.sh
+```
+
+They write separate `curves.csv` files and checkpoints under
+`outputs/seed_00/lr_rewarm/` and `outputs/seed_00/lr_rewarm_project/`.
+Intermediate model checkpoints are saved every 50 full-data epochs.
+
 Submit to Izar from the repository root with:
 
 ```bash
