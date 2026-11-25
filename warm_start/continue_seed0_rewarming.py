@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Continue seed 0 from the half-data checkpoint with ELR re-warming.
+"""Continue a seed from its half-data checkpoint with ELR re-warming.
 
 Two variants are supported: a nominal learning-rate restart alone, or the
 same restart with per-step projection of convolutional and linear weights to
@@ -22,7 +22,6 @@ from torchvision import datasets
 import replicate_figure1 as baseline
 
 
-SEED = 0
 FULL_DATA_EPOCHS = 700
 REWARM_LR = 1e-2
 FINAL_LR = 1e-3
@@ -32,11 +31,12 @@ CHECKPOINT_INTERVAL = 50
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--variant", choices=("lr_rewarm", "lr_rewarm_project"), required=True)
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=here / "outputs" / "seed_00" / "warm_after_half.pt",
+        default=None,
     )
     parser.add_argument(
         "--data-root",
@@ -53,9 +53,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def initial_weight_norms(device: torch.device) -> Dict[str, torch.Tensor]:
-    """Recreate the seed-0 initialization used before the saved warm stage."""
-    baseline.seed_everything(SEED + 101)
+def initial_weight_norms(device: torch.device, seed: int) -> Dict[str, torch.Tensor]:
+    """Recreate the initialization used before the saved warm stage."""
+    baseline.seed_everything(seed + 101)
     initial_model = baseline.ResNet(num_classes=10).to(device)
     return {
         name: parameter.detach().norm().clone()
@@ -82,10 +82,11 @@ def save_checkpoint(
     variant: str,
     completed_epoch: int,
     reference_norms: Optional[Dict[str, torch.Tensor]],
+    seed: int,
 ) -> None:
     payload = {
         "model_state_dict": model.state_dict(),
-        "seed": SEED,
+        "seed": seed,
         "variant": variant,
         "completed_full_data_epoch": completed_epoch,
         "starting_checkpoint": "warm_after_half.pt",
@@ -103,12 +104,20 @@ def save_checkpoint(
 
 def main() -> None:
     args = parse_args()
+    seed = args.seed
+    if args.checkpoint is None:
+        args.checkpoint = (
+            Path(__file__).resolve().parent
+            / "outputs"
+            / f"seed_{seed:02d}"
+            / "warm_after_half.pt"
+        )
     if not args.checkpoint.is_file():
-        raise FileNotFoundError(f"Seed-0 transition checkpoint not found: {args.checkpoint}")
+        raise FileNotFoundError(f"Seed-{seed} transition checkpoint not found: {args.checkpoint}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"device={device} variant={args.variant} seed={SEED}", flush=True)
+    print(f"device={device} variant={args.variant} seed={seed}", flush=True)
     print(f"checkpoint={args.checkpoint}", flush=True)
 
     transform = baseline.transforms.Compose(
@@ -120,21 +129,21 @@ def main() -> None:
     trainset = datasets.CIFAR10(
         root=str(args.data_root), train=True, download=False, transform=transform
     )
-    indices = baseline.np.random.RandomState(SEED).permutation(len(trainset))
+    indices = baseline.np.random.RandomState(seed).permutation(len(trainset))
     n_fit = int(len(trainset) * baseline.FIT_FRACTION_OF_CIFAR_TRAIN)
     fit_indices = indices[:n_fit].tolist()
     val_indices = indices[n_fit:].tolist()
-    val_loader = baseline.make_loader(trainset, val_indices, SEED + 301, device)
-    full_loader = baseline.make_loader(trainset, fit_indices, SEED + 402, device)
+    val_loader = baseline.make_loader(trainset, val_indices, seed + 301, device)
+    full_loader = baseline.make_loader(trainset, fit_indices, seed + 402, device)
 
     reference_norms = (
-        initial_weight_norms(device) if args.variant == "lr_rewarm_project" else None
+        initial_weight_norms(device, seed) if args.variant == "lr_rewarm_project" else None
     )
-    baseline.seed_everything(SEED + 101)
+    baseline.seed_everything(seed + 101)
     model = baseline.ResNet(num_classes=10).to(device)
     checkpoint = torch.load(args.checkpoint, map_location=device)
-    if checkpoint.get("seed") != SEED or checkpoint.get("method") != "warm_after_half":
-        raise ValueError("Checkpoint metadata does not match seed-0 warm_after_half checkpoint")
+    if checkpoint.get("seed") != seed or checkpoint.get("method") != "warm_after_half":
+        raise ValueError("Checkpoint metadata does not match the requested warm_after_half seed")
     model.load_state_dict(checkpoint["model_state_dict"], strict=True)
 
     # Match the reference experiment's optimizer reset at the full-data boundary.
@@ -181,7 +190,7 @@ def main() -> None:
             train_accuracy = train_correct / train_count
             heldout_loss, heldout_accuracy = baseline.evaluate(model, val_loader, device)
             row = {
-                "seed": SEED,
+                "seed": seed,
                 "variant": args.variant,
                 "epoch": baseline.EPOCHS_PER_WARM_STAGE + epoch + 1,
                 "stage": "full_data",
@@ -194,7 +203,7 @@ def main() -> None:
             writer.writerow(row)
             handle.flush()
             print(
-                f"seed=0 variant={args.variant} epoch={row['epoch']} "
+                f"seed={seed} variant={args.variant} epoch={row['epoch']} "
                 f"lr={learning_rate:.6g} train_acc={train_accuracy:.4f} "
                 f"heldout_acc={heldout_accuracy:.4f} elapsed_s={time.time()-start_time:.1f}",
                 flush=True,
@@ -208,10 +217,12 @@ def main() -> None:
                     args.variant,
                     completed_epoch,
                     reference_norms,
+                    seed,
                 )
 
     save_checkpoint(
-        args.output_dir / "final.pt", model, args.variant, FULL_DATA_EPOCHS, reference_norms
+        args.output_dir / "final.pt", model, args.variant, FULL_DATA_EPOCHS,
+        reference_norms, seed
     )
     print(f"outputs={args.output_dir.resolve()}", flush=True)
 

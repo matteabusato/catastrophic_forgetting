@@ -29,12 +29,12 @@ Set `CIFAR10_ROOT` to use another data location. The script writes per-seed
 curves and checkpoints, `summary_by_seed.csv`, and (when matplotlib is
 installed) `figure1_replication.png` under `warm_start/outputs`.
 
-## Seed-0 ELR re-warming continuations
+## ELR re-warming continuations
 
-The two continuation jobs start from
-`outputs/seed_00/warm_after_half.pt`, the saved model after the first 350
-half-data epochs. Each then trains on the same full-data fit split for 700
-epochs with a fresh Adam state. The LR jumps from the baseline `1e-3` to
+Each variant starts from `outputs/seed_XX/warm_after_half.pt`, the saved
+model after the first 350 half-data epochs. It then trains on that seed's
+full-data fit split for 700 epochs with a fresh Adam state. The LR jumps from
+the baseline `1e-3` to
 `1e-2` at the transition and follows a cosine decay to `1e-3` over those 700
 epochs. This one-shot schedule adapts the ELR re-warming idea to our longer
 Ash–Adams run; it is not the exact cyclic schedule or 70+70 duration used in
@@ -42,7 +42,7 @@ the later paper.
 
 `lr_rewarm` changes the LR only. `lr_rewarm_project` uses the same schedule
 and, after every optimizer update, projects each convolutional and linear
-weight tensor to its norm at seed-0 random initialization. The latter tests
+weight tensor to its norm at that seed's random initialization. The latter tests
 whether controlling norm growth helps the re-warmed LR continue to produce
 feature changes. BatchNorm parameters and buffers are not projected.
 
@@ -56,6 +56,12 @@ sbatch warm_start/run_seed0_lr_rewarm_project_izar.sh
 They write separate `curves.csv` files and checkpoints under
 `outputs/seed_00/lr_rewarm/` and `outputs/seed_00/lr_rewarm_project/`.
 Intermediate model checkpoints are saved every 50 full-data epochs.
+The Python runner also accepts `--seed`; use a seed-specific output directory
+to run the same variant for other seeds. The five-seed array job is:
+
+```bash
+sbatch warm_start/run_lr_rewarm_array_izar.sh
+```
 
 After both jobs finish, make the combined seed-0 training/test accuracy figure
 with:
@@ -76,3 +82,29 @@ sbatch warm_start/run_figure1_izar.sh
 
 The job uses the repository-root `.venv` by default. Set `VENV` if the cluster
 environment lives elsewhere.
+
+## Long-run convergence and loss tracking
+
+After the warm, cold, and LR-rewarmed endpoints exist for each seed, continue
+the arms to a shared 3,500 full-data epochs. The warm baseline has completed
+350 full-data epochs; cold and LR-rewarmed have completed 700:
+
+```bash
+python warm_start/continue_long_run.py \
+    --seeds 0 1 2 3 4 \
+    --target-full-data-epochs 3500
+```
+
+On Izar, submit the equivalent resumable job with:
+
+```bash
+sbatch warm_start/run_long_run_izar.sh
+```
+
+The runner records per-epoch training and held-out cross-entropy and accuracy,
+plus the learning rate. It writes per-seed curves, endpoint summaries, and a
+mean/std trajectory summary across the selected seeds. It saves resumable
+checkpoints every 50 epochs under
+`warm_start/outputs/long_run/`, including optimizer state. The LR-rewarmed arm
+continues at its final `1e-3` learning rate; warm and cold arms also continue at
+`1e-3`. See `EXPERIMENT_LOG.md` for study status and artifact prerequisites.
