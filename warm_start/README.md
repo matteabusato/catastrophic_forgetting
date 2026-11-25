@@ -57,16 +57,16 @@ They write separate `curves.csv` files and checkpoints under
 `outputs/seed_00/lr_rewarm/` and `outputs/seed_00/lr_rewarm_project/`.
 Intermediate model checkpoints are saved every 50 full-data epochs.
 
-After both jobs finish, make separate seed-0 training-accuracy and test-
-accuracy plots with:
+After both jobs finish, make the combined seed-0 training/test accuracy figure
+with:
 
 ```bash
 python warm_start/plot_seed0_rewarming.py
 ```
 
-The plots are saved in `warm_start/outputs/seed_00/`. Add
-`--exclude-projection` to omit the projection run and save separate
-`*_no_projection.png` files.
+The figure is saved as `warm_start/outputs/seed_00/seed0_warm_vs_warm_lr_vs_cold.png`.
+It shows the shared 50%-data pretraining segment, then the warm baseline and
+LR-scheduled continuations alongside the cold-start curve through epoch 700.
 
 Submit to Izar from the repository root with:
 

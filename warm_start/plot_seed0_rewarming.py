@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot seed-0 baseline and ELR re-warming comparison curves."""
+"""Make the seed-0 warm, LR-scheduled warm, and cold-start comparison plot."""
 
 from __future__ import annotations
 
@@ -16,95 +16,96 @@ def read_rows(path: Path) -> List[dict]:
         return list(csv.DictReader(handle))
 
 
-def epoch_map(rows: List[dict], method: str) -> Dict[int, dict]:
+def rows_by_epoch(rows: List[dict], method: str = "") -> Dict[int, dict]:
     return {
         int(row["epoch"]): row
         for row in rows
-        if row.get("method") == method
+        if not method or row.get("method") == method
     }
-
-
-def continuation_map(rows: List[dict]) -> Dict[int, dict]:
-    return {int(row["epoch"]): row for row in rows}
-
-
-def stitched_curve(
-    warm_rows: Dict[int, dict], continuation_rows: Dict[int, dict], metric: str
-) -> tuple[List[int], List[float]]:
-    # All intervention runs share this exact warm-start half-data trajectory.
-    epochs = sorted(set(range(1, 351)) | set(continuation_rows))
-    values = []
-    for epoch in epochs:
-        row = warm_rows[epoch] if epoch <= 350 else continuation_rows[epoch]
-        values.append(float(row[metric]))
-    return epochs, values
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    default_root = Path(__file__).resolve().parent / "outputs" / "seed_00"
-    parser.add_argument("--seed-dir", type=Path, default=default_root)
-    parser.add_argument("--output-dir", type=Path, default=default_root)
-    parser.add_argument(
-        "--exclude-projection",
-        action="store_true",
-        help="Omit the noisy LR re-warming plus projection run from both plots.",
-    )
+    seed_dir = Path(__file__).resolve().parent / "outputs" / "seed_00"
+    parser.add_argument("--seed-dir", type=Path, default=seed_dir)
+    parser.add_argument("--output", type=Path, default=seed_dir / "seed0_warm_vs_warm_lr_vs_cold.png")
     args = parser.parse_args()
 
     try:
         import matplotlib.pyplot as plt
     except ImportError as exc:
-        raise SystemExit("matplotlib is required to make these plots") from exc
+        raise SystemExit("matplotlib is required to make the plot") from exc
 
-    baseline_rows = read_rows(args.seed_dir / "curves.csv")
-    lr_rows = continuation_map(read_rows(args.seed_dir / "lr_rewarm" / "curves.csv"))
-    warm = epoch_map(baseline_rows, "warm_start")
-    cold = epoch_map(baseline_rows, "cold_start")
-    curves = {
-        "Cold start": (cold, "#555555"),
-        "Warm baseline": (warm, "#2a9d8f"),
-        "Warm + LR re-warming": (lr_rows, "#e76f51"),
+    baseline = read_rows(args.seed_dir / "curves.csv")
+    lr_schedule = read_rows(args.seed_dir / "lr_rewarm" / "curves.csv")
+    warm_half = rows_by_epoch(baseline, "warm_start")
+    warm_full = rows_by_epoch(baseline, "warm_start")
+    cold = rows_by_epoch(baseline, "cold_start")
+    lr_full = rows_by_epoch(lr_schedule)
+
+    # Plot the shared half-data stage once. After epoch 350, compare the
+    # baseline continuation, LR-scheduled continuation, and cold-start arm.
+    pretrain_epochs = sorted(e for e, row in warm_half.items() if row["stage"] == "half_data")
+    warm_epochs = sorted(e for e, row in warm_full.items() if row["stage"] == "full_data")
+    cold_epochs = sorted(cold)
+    lr_epochs = sorted(e for e in lr_full if 350 < e <= 700)
+    if not pretrain_epochs or not warm_epochs or not cold_epochs or not lr_epochs:
+        raise ValueError("Seed-0 baseline and LR-schedule CSVs are incomplete")
+
+    panels = (
+        ("train_accuracy", "Train accuracy", (0.4, 1.02)),
+        ("heldout_accuracy", "Test accuracy", (0.42, 0.81)),
+    )
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5), sharex=True, constrained_layout=True)
+    colors = {
+        "pretrain": "#79a9d8",
+        "warm": "#1f5f99",
+        "lr": "#2a9d8f",
+        "cold": "#e76f00",
     }
-    if not args.exclude_projection:
-        project_rows = continuation_map(
-            read_rows(args.seed_dir / "lr_rewarm_project" / "curves.csv")
+
+    for ax, (metric, ylabel, y_limits) in zip(axes, panels):
+        ax.plot(
+            pretrain_epochs,
+            [float(warm_half[e][metric]) for e in pretrain_epochs],
+            linestyle="--",
+            linewidth=2,
+            color=colors["pretrain"],
+            label="50% data (pretraining)",
         )
-        curves["Warm + LR re-warming + projection"] = (project_rows, "#457b9d")
-    if not warm or not cold:
-        raise ValueError("Baseline curves.csv must contain warm_start and cold_start rows")
+        ax.plot(
+            warm_epochs,
+            [float(warm_full[e][metric]) for e in warm_epochs],
+            linewidth=2,
+            color=colors["warm"],
+            label="Warm start, then full data",
+        )
+        ax.plot(
+            lr_epochs,
+            [float(lr_full[e][metric]) for e in lr_epochs],
+            linewidth=2,
+            color=colors["lr"],
+            label="Warm + LR schedule",
+        )
+        ax.plot(
+            cold_epochs,
+            [float(cold[e][metric]) for e in cold_epochs],
+            linewidth=2,
+            color=colors["cold"],
+            label="Cold start",
+        )
+        ax.axvline(350, color="gray", linestyle=":", linewidth=1.5)
+        ax.set(xlim=(0, 700), ylim=y_limits, xlabel="Epoch", ylabel=ylabel)
+        ax.grid(alpha=0.25)
+        ax.legend(loc="lower right", frameon=True, fontsize=9)
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    fig.suptitle("Warm vs warm + LR schedule vs cold starting", fontsize=16)
+    axes[0].text(356, 0.42, "full data added", rotation=90, va="bottom", fontsize=9, color="gray")
 
-    suffix = "_no_projection" if args.exclude_projection else ""
-
-    # Make one independent single-axis figure per accuracy metric.
-    for metric, ylabel, filename in (
-        ("train_accuracy", "Training accuracy", f"seed0_training_accuracy{suffix}.png"),
-        ("heldout_accuracy", "Test accuracy", f"seed0_test_accuracy{suffix}.png"),
-    ):
-        fig, ax = plt.subplots(figsize=(12, 6.5), constrained_layout=True)
-        for label, (source, color) in curves.items():
-            if label.startswith("Warm +"):
-                epochs, values = stitched_curve(warm, source, metric)
-            else:
-                epochs = sorted(source)
-                values = [float(source[e][metric]) for e in epochs]
-            ax.plot(epochs, values, color=color, linewidth=1.8, label=label)
-
-        ax.axvline(350, color="black", linestyle=":", linewidth=1)
-        ax.axvline(700, color="black", linestyle="-.", linewidth=1, alpha=0.65)
-        ax.text(355, 0.03, "full data added", rotation=90, va="bottom", fontsize=9)
-        ax.text(705, 0.03, "original 700-epoch horizon", rotation=90, va="bottom", fontsize=9)
-        ax.set(xlim=(1, 1050), ylim=(0, 1), xlabel="Epoch", ylabel=ylabel)
-        ax.set_title("Warm vs cold starting")
-        ax.text(0.01, 0.98, "seed 0", transform=ax.transAxes, va="top", fontsize=9)
-        ax.grid(alpha=0.2)
-        ax.legend(loc="lower right", frameon=True)
-        plot_path = args.output_dir / filename
-        fig.savefig(plot_path, dpi=180)
-        plt.close(fig)
-        print(f"Saved {plot_path}")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(args.output, dpi=180)
+    plt.close(fig)
+    print(f"Saved {args.output}")
 
 
 if __name__ == "__main__":
