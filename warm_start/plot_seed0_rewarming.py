@@ -45,6 +45,11 @@ def main() -> None:
     default_root = Path(__file__).resolve().parent / "outputs" / "seed_00"
     parser.add_argument("--seed-dir", type=Path, default=default_root)
     parser.add_argument("--output-dir", type=Path, default=default_root)
+    parser.add_argument(
+        "--exclude-projection",
+        action="store_true",
+        help="Omit the noisy LR re-warming plus projection run from both plots.",
+    )
     args = parser.parse_args()
 
     try:
@@ -54,17 +59,18 @@ def main() -> None:
 
     baseline_rows = read_rows(args.seed_dir / "curves.csv")
     lr_rows = continuation_map(read_rows(args.seed_dir / "lr_rewarm" / "curves.csv"))
-    project_rows = continuation_map(
-        read_rows(args.seed_dir / "lr_rewarm_project" / "curves.csv")
-    )
     warm = epoch_map(baseline_rows, "warm_start")
     cold = epoch_map(baseline_rows, "cold_start")
     curves = {
         "Cold start": (cold, "#555555"),
         "Warm baseline": (warm, "#2a9d8f"),
         "Warm + LR re-warming": (lr_rows, "#e76f51"),
-        "Warm + LR re-warming + projection": (project_rows, "#457b9d"),
     }
+    if not args.exclude_projection:
+        project_rows = continuation_map(
+            read_rows(args.seed_dir / "lr_rewarm_project" / "curves.csv")
+        )
+        curves["Warm + LR re-warming + projection"] = (project_rows, "#457b9d")
     if not warm or not cold:
         raise ValueError("Baseline curves.csv must contain warm_start and cold_start rows")
 
@@ -102,7 +108,9 @@ def main() -> None:
     )
     train_ax.grid(alpha=0.2)
     train_ax.legend(loc="lower right", frameon=True)
-    fig.savefig(args.output_dir / "seed0_accuracy_comparison.png", dpi=180)
+    suffix = "_no_projection" if args.exclude_projection else ""
+    accuracy_path = args.output_dir / f"seed0_accuracy_comparison{suffix}.png"
+    fig.savefig(accuracy_path, dpi=180)
     plt.close(fig)
 
     # Accuracy generalization gap, train minus held-out, puts the target effect
@@ -125,11 +133,12 @@ def main() -> None:
     ax.set_title("Seed-0 generalization gap")
     ax.grid(alpha=0.2)
     ax.legend(loc="best", frameon=True)
-    fig.savefig(args.output_dir / "seed0_generalization_gap.png", dpi=180)
+    gap_path = args.output_dir / f"seed0_generalization_gap{suffix}.png"
+    fig.savefig(gap_path, dpi=180)
     plt.close(fig)
 
-    print(f"Saved {args.output_dir / 'seed0_accuracy_comparison.png'}")
-    print(f"Saved {args.output_dir / 'seed0_generalization_gap.png'}")
+    print(f"Saved {accuracy_path}")
+    print(f"Saved {gap_path}")
 
 
 if __name__ == "__main__":

@@ -65,6 +65,8 @@ python warm_start/plot_seed0_rewarming.py
 ```
 
 The plots are saved in `warm_start/outputs/seed_00/`.
+Add `--exclude-projection` to omit the projection run and save separate
+`*_no_projection.png` files.
 
 Submit to Izar from the repository root with:
 
