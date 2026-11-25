@@ -76,69 +76,35 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Accuracy view: solid lines are training accuracy (left axis); dashed
-    # lines are held-out accuracy (right axis). Intervention lines reuse the
-    # shared warm-start history through epoch 350 before their own continuation.
-    fig, train_ax = plt.subplots(figsize=(12, 6.5), constrained_layout=True)
-    heldout_ax = train_ax.twinx()
-    for label, (source, color) in curves.items():
-        if label.startswith("Warm +"):
-            train_epochs, train_values = stitched_curve(warm, source, "train_accuracy")
-            test_epochs, test_values = stitched_curve(warm, source, "heldout_accuracy")
-        else:
-            train_epochs = sorted(source)
-            train_values = [float(source[e]["train_accuracy"]) for e in train_epochs]
-            test_epochs = sorted(source)
-            test_values = [float(source[e]["heldout_accuracy"]) for e in test_epochs]
-        train_ax.plot(train_epochs, train_values, color=color, linewidth=1.8, label=label)
-        heldout_ax.plot(
-            test_epochs, test_values, color=color, linewidth=1.8, linestyle="--", alpha=0.9
-        )
-
-    train_ax.axvline(350, color="black", linestyle=":", linewidth=1)
-    train_ax.axvline(700, color="black", linestyle="-.", linewidth=1, alpha=0.65)
-    train_ax.text(355, 0.03, "full data added", rotation=90, va="bottom", fontsize=9)
-    train_ax.text(705, 0.03, "original 700-epoch horizon", rotation=90, va="bottom", fontsize=9)
-    train_ax.set(xlim=(1, 1050), ylim=(0, 1), xlabel="Epoch", ylabel="Training accuracy")
-    heldout_ax.set(ylim=(0, 1), ylabel="Held-out accuracy")
-    train_ax.set_title("Warm vs cold starting")
-    train_ax.text(
-        0.01, 0.98, "seed 0 · solid: train · dashed: held-out",
-        transform=train_ax.transAxes, va="top", fontsize=9,
-    )
-    train_ax.grid(alpha=0.2)
-    train_ax.legend(loc="lower right", frameon=True)
     suffix = "_no_projection" if args.exclude_projection else ""
-    accuracy_path = args.output_dir / f"seed0_accuracy_comparison{suffix}.png"
-    fig.savefig(accuracy_path, dpi=180)
-    plt.close(fig)
 
-    # Accuracy generalization gap, train minus held-out, puts the target effect
-    # directly on one scale and makes the extra 350 epochs visible.
-    fig, ax = plt.subplots(figsize=(12, 5.5), constrained_layout=True)
-    for label, (source, color) in curves.items():
-        if label.startswith("Warm +"):
-            epochs, train_values = stitched_curve(warm, source, "train_accuracy")
-            _, test_values = stitched_curve(warm, source, "heldout_accuracy")
-        else:
-            epochs = sorted(source)
-            train_values = [float(source[e]["train_accuracy"]) for e in epochs]
-            test_values = [float(source[e]["heldout_accuracy"]) for e in epochs]
-        gaps = [train - test for train, test in zip(train_values, test_values)]
-        ax.plot(epochs, gaps, color=color, linewidth=1.8, label=label)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.axvline(350, color="black", linestyle=":", linewidth=1, label="full data added")
-    ax.axvline(700, color="black", linestyle="-.", linewidth=1, alpha=0.65)
-    ax.set(xlim=(1, 1050), xlabel="Epoch", ylabel="Train accuracy − held-out accuracy")
-    ax.set_title("Seed-0 generalization gap")
-    ax.grid(alpha=0.2)
-    ax.legend(loc="best", frameon=True)
-    gap_path = args.output_dir / f"seed0_generalization_gap{suffix}.png"
-    fig.savefig(gap_path, dpi=180)
-    plt.close(fig)
+    # Make one independent single-axis figure per accuracy metric.
+    for metric, ylabel, filename in (
+        ("train_accuracy", "Training accuracy", f"seed0_training_accuracy{suffix}.png"),
+        ("heldout_accuracy", "Test accuracy", f"seed0_test_accuracy{suffix}.png"),
+    ):
+        fig, ax = plt.subplots(figsize=(12, 6.5), constrained_layout=True)
+        for label, (source, color) in curves.items():
+            if label.startswith("Warm +"):
+                epochs, values = stitched_curve(warm, source, metric)
+            else:
+                epochs = sorted(source)
+                values = [float(source[e][metric]) for e in epochs]
+            ax.plot(epochs, values, color=color, linewidth=1.8, label=label)
 
-    print(f"Saved {accuracy_path}")
-    print(f"Saved {gap_path}")
+        ax.axvline(350, color="black", linestyle=":", linewidth=1)
+        ax.axvline(700, color="black", linestyle="-.", linewidth=1, alpha=0.65)
+        ax.text(355, 0.03, "full data added", rotation=90, va="bottom", fontsize=9)
+        ax.text(705, 0.03, "original 700-epoch horizon", rotation=90, va="bottom", fontsize=9)
+        ax.set(xlim=(1, 1050), ylim=(0, 1), xlabel="Epoch", ylabel=ylabel)
+        ax.set_title("Warm vs cold starting")
+        ax.text(0.01, 0.98, "seed 0", transform=ax.transAxes, va="top", fontsize=9)
+        ax.grid(alpha=0.2)
+        ax.legend(loc="lower right", frameon=True)
+        plot_path = args.output_dir / filename
+        fig.savefig(plot_path, dpi=180)
+        plt.close(fig)
+        print(f"Saved {plot_path}")
 
 
 if __name__ == "__main__":

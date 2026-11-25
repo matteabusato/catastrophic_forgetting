@@ -57,15 +57,15 @@ They write separate `curves.csv` files and checkpoints under
 `outputs/seed_00/lr_rewarm/` and `outputs/seed_00/lr_rewarm_project/`.
 Intermediate model checkpoints are saved every 50 full-data epochs.
 
-After both jobs finish, make the seed-0 accuracy and generalization-gap plots
-with:
+After both jobs finish, make separate seed-0 training-accuracy and test-
+accuracy plots with:
 
 ```bash
 python warm_start/plot_seed0_rewarming.py
 ```
 
-The plots are saved in `warm_start/outputs/seed_00/`.
-Add `--exclude-projection` to omit the projection run and save separate
+The plots are saved in `warm_start/outputs/seed_00/`. Add
+`--exclude-projection` to omit the projection run and save separate
 `*_no_projection.png` files.
 
 Submit to Izar from the repository root with:
