@@ -95,7 +95,7 @@ training, across seeds, while tracking their loss trajectories.
 
 ### Status and prerequisites
 
-This is a protocol, not a completed run. A resumable runner is now available
+The long-run protocol is now being executed. A resumable runner is available
 as `continue_long_run.py`; it writes per-epoch loss/accuracy curves and
 periodic checkpoints with optimizer state. The re-warming script now accepts
 `--seed`, so the LR-decay endpoint can be generated for seeds 0–4 from their
@@ -119,21 +119,89 @@ python warm_start/continue_long_run.py \
   --seeds 0 1 2 3 4 --target-full-data-epochs 3500
 ```
 
-The CIFAR-10 outputs/checkpoints are not present in the current workspace, so
-the runner has not been launched here. Retrieve the warm and cold endpoint
-checkpoints for all five seeds and produce the matching LR-decay endpoints
-first. If those artifacts cannot be retrieved, rerun the three arms as a fresh
-matched experiment. Add run IDs, checkpoint paths, and actual metrics here as
-they become available.
+The outputs/checkpoints are on Izar and are not present in this local
+workspace. The user confirmed the warm, cold, and LR-rewarm endpoint files for
+seeds 0–4 on Izar; the LR-rewarm array job was `3265795`. The long-run job
+`3265892` was submitted on 2026-11-25 and observed running on node `i51` at
+21:40 Zurich time. It targets 3,500 full-data epochs for all five seeds. No
+long-run metrics have been reported yet. Its Slurm logs are
+`warm-start-long-3265892.out` and `warm-start-long-3265892.err` in the Izar
+repository root. Add completion state, output paths, and metrics when they are
+available.
 
-## Deferred: architecture comparisons
+### Remaining actions for this phase
 
-After the long-run and loss-trajectory comparison, test whether the observed
-behavior persists with a smaller transformer, a linear network, or a reduced
-ResNet. Keep the CIFAR-10 data split and training/evaluation protocol fixed
-where the architecture permits, and compare warm, cold, and LR-decay arms.
-Architecture runs have not started; specify each model and parameter count
-before adding results.
+1. Monitor job `3265892`; if it reaches the time limit, resubmit
+   `sbatch warm_start/run_long_run_izar.sh` to resume from the latest checkpoint.
+2. Confirm all 15 seed/method runs reach full-data epoch 3,500. Inspect
+   `outputs/long_run/trajectory_summary.csv`, `summary_by_seed.csv`, and
+   `summary_across_seeds.csv` after completion.
+3. Plot held-out accuracy and train/held-out cross-entropy against full-data
+   epochs, with per-seed traces and mean ± standard deviation. Compare paired
+   per-seed endpoint differences for warm vs cold and LR-rewarmed vs cold.
+4. Before calling the arms converged, check that the held-out accuracy gap is
+   small across seeds and that held-out accuracy/loss have plateaued near the
+   final horizon. If they have not plateaued, extend the same runs to a longer
+   common horizon using the saved checkpoints.
+5. Add the plots, endpoint values, across-seed spread, and conclusion here.
+
+## Proposed architecture experiment: reduced-depth ResNet
+
+The first architecture experiment will test only the original warm-start and
+cold-start arms, one seed at a time. The LR-decay arm and other architectures
+are out of scope for this first pass.
+
+### Model and question
+
+Use the same CIFAR ResNet stem, BasicBlock definition, stage widths
+`16/32/64/128`, downsampling shortcuts, BatchNorm, and classifier as the
+current CIFAR ResNet-18 reproduction. Reduce depth from two BasicBlocks per
+stage (`[2,2,2,2]`) to one per stage (`[1,1,1,1]`). This keeps the residual and
+convolutional structure while reducing depth and capacity. Record the exact
+parameter count from the instantiated model in the run metadata.
+
+Question: does the warm-versus-cold generalization gap remain with a smaller,
+shallower residual network?
+
+### Matched protocol
+
+- Start with seed `0`, using the same seed-0 split as the ResNet-18 runs: a
+  random one-third held out, with half of the remaining fit set used for
+  warm-start training.
+- Warm arm: 350 epochs on half the fit set, then 350 epochs on the full fit
+  set, resetting Adam state at the transition.
+- Cold arm: fresh initialization and **350 epochs** on the full fit set.
+- Keep the current settings: batch size 128, Adam at `1e-3`, cross-entropy,
+  weight decay 0, channel normalization mean/std `0.5`, no augmentation, and
+  no learning-rate schedule.
+- Use paired train/held-out examples and matching data-loader seeds across
+  warm and cold arms. Use the same initialization seed offsets as the current
+  protocol where tensor shapes allow.
+- Log per-epoch training and held-out cross-entropy and accuracy, epoch and
+  wall-clock time. Save the warm transition checkpoint and both final
+  checkpoints. Outputs go under `warm_start/outputs/small_resnet/seed_XX/`.
+
+This intentionally uses 350 cold full-data epochs, as requested. The warm arm
+also has its 350-epoch half-data phase, so the arms do not have equal total
+training examples or optimizer updates; report those counts and wall-clock
+times alongside generalization results.
+
+### Decision after seed 0
+
+Compare endpoint held-out accuracy and loss, the full learning curves, and
+training accuracy/loss to check whether both arms optimized adequately. If the
+warm-versus-cold behavior appears and the model fits the training set, repeat
+with the remaining seeds one at a time before making an across-seed claim. If
+both arms underfit or fail to optimize, label any architecture-specific tuning
+as a separate follow-up rather than changing this matched first pass.
+
+The self-contained runner `run_small_resnet_experiment.py` and Izar job script
+`run_small_resnet_izar.sh` are now implemented. The job defaults to seed 0;
+submit other seeds one at a time with `SEED=1 sbatch
+warm_start/run_small_resnet_izar.sh`, changing the seed as needed. The
+experiment has not yet been launched. Later candidates remain a linear
+softmax/factorized-linear control, a small tanh MLP, and a small Vision
+Transformer; do not include them in this first experiment.
 
 ## Update convention
 

@@ -108,3 +108,24 @@ checkpoints every 50 epochs under
 `warm_start/outputs/long_run/`, including optimizer state. The LR-rewarmed arm
 continues at its final `1e-3` learning rate; warm and cold arms also continue at
 `1e-3`. See `EXPERIMENT_LOG.md` for study status and artifact prerequisites.
+
+## Reduced-depth ResNet experiment
+
+The self-contained `run_small_resnet_experiment.py` compares only warm and
+cold starts for a CIFAR ResNet with one BasicBlock per stage (`[1,1,1,1]`),
+keeping the existing channels and training recipe. Warm uses 350 epochs on
+half the fit data and 350 on all fit data; cold uses 350 epochs on all fit
+data. The script logs per-epoch train/held-out loss and accuracy, run
+configuration, and endpoint summaries under `warm_start/outputs/small_resnet/`.
+
+Submit seed 0 on Izar with:
+
+```bash
+sbatch warm_start/run_small_resnet_izar.sh
+```
+
+Run subsequent seeds one at a time by setting `SEED`:
+
+```bash
+SEED=1 sbatch warm_start/run_small_resnet_izar.sh
+```
