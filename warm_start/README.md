@@ -28,6 +28,10 @@ The CIFAR-10 training archive is downloaded under `warm_start/data` by default.
 Set `CIFAR10_ROOT` to use another data location. The script writes per-seed
 curves and checkpoints, `summary_by_seed.csv`, and (when matplotlib is
 installed) `figure1_replication.png` under `warm_start/outputs`.
+Regenerate the plot from existing curves without rerunning training with
+`python warm_start/replicate_figure1.py --plot-only`. In this plot, the cold
+700-epoch trajectory is shifted to start at epoch 350 and therefore ends at
+epoch 1,050.
 
 ## ELR re-warming continuations
 

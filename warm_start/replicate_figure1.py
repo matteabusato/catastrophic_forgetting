@@ -124,6 +124,11 @@ def parse_args() -> argparse.Namespace:
         default=Path(os.environ.get("WARM_START_OUTPUT_DIR", here / "outputs")),
         help="Directory for metrics, checkpoints, and the summary plot.",
     )
+    parser.add_argument(
+        "--plot-only",
+        action="store_true",
+        help="Regenerate the figure from saved per-seed curves without training.",
+    )
     return parser.parse_args()
 
 
@@ -396,7 +401,7 @@ def plot_curves(output_dir: Path, rows: List[Dict[str, object]]) -> None:
     series = (
         ("half_only", "50% data (pretraining stage)", "#78A9D1", "--"),
         ("warm_continued", "Warm start, then full data", "#165A91", "-"),
-        ("cold_start", "Full data from scratch", "#E87500", "-"),
+        ("cold_start", "Full data from scratch (aligned at 350)", "#E87500", "-"),
     )
     for ax, metric, ylabel in (
         (axes[0], "heldout_accuracy", "Held-out accuracy"),
@@ -425,7 +430,7 @@ def plot_curves(output_dir: Path, rows: List[Dict[str, object]]) -> None:
             )
             mean = values.mean(axis=0)
             std = values.std(axis=0, ddof=1) if values.shape[0] > 1 else np.zeros_like(mean)
-            if series_name == "warm_continued":
+            if series_name in ("warm_continued", "cold_start"):
                 common_epochs = [epoch + EPOCHS_PER_WARM_STAGE for epoch in common_epochs]
             ax.plot(common_epochs, mean, color=color, linestyle=linestyle, label=label)
             ax.fill_between(
@@ -437,7 +442,7 @@ def plot_curves(output_dir: Path, rows: List[Dict[str, object]]) -> None:
             )
         if metric == "heldout_accuracy":
             ax.axvline(EPOCHS_PER_WARM_STAGE, color="0.5", linestyle="--", linewidth=1)
-        ax.set_xlabel("Epoch")
+        ax.set_xlabel("Phase-aligned epoch (cold curve shifted by 350)")
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.25)
         ax.legend()
@@ -448,6 +453,20 @@ def plot_curves(output_dir: Path, rows: List[Dict[str, object]]) -> None:
 
 def main() -> None:
     args = parse_args()
+    if args.plot_only:
+        all_rows: List[Dict[str, object]] = []
+        for seed in range(NUM_SEEDS):
+            curves_path = args.output_dir / f"seed_{seed:02d}" / "curves.csv"
+            if not curves_path.is_file():
+                raise FileNotFoundError(
+                    f"Missing saved curves for seed {seed}: {curves_path}"
+                )
+            with curves_path.open(newline="") as handle:
+                all_rows.extend(csv.DictReader(handle))
+        plot_curves(args.output_dir, all_rows)
+        print(f"plot={args.output_dir / 'figure1_replication.png'}", flush=True)
+        return
+
     args.data_root.mkdir(parents=True, exist_ok=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(int(os.environ.get("OMP_NUM_THREADS", "4")))
