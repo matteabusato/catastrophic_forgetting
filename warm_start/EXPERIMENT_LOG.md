@@ -196,10 +196,27 @@ both arms underfit or fail to optimize, label any architecture-specific tuning
 as a separate follow-up rather than changing this matched first pass.
 
 The self-contained runner `run_small_resnet_experiment.py` and Izar job script
-`run_small_resnet_izar.sh` are now implemented. The job defaults to seed 0;
-submit other seeds one at a time with `SEED=1 sbatch
-warm_start/run_small_resnet_izar.sh`, changing the seed as needed. The
-experiment has not yet been launched. Later candidates remain a linear
+`run_small_resnet_izar.sh` are implemented. Seed-0 job `3265916` completed
+successfully on 2026-11-26 after 2:44:52. Its logs are
+`warm-start-small-resnet-3265916.out` and
+`warm-start-small-resnet-3265916.err` in the Izar repository root. Results are
+under `warm_start/outputs/small_resnet/seed_00/`:
+
+- Parameter count: `308,826`.
+- Warm held-out accuracy/loss: `73.69%` / `2.220`.
+- Cold held-out accuracy/loss: `75.23%` / `1.899`.
+- Warm minus cold: `-1.54` percentage points accuracy and `+0.321` held-out
+  cross-entropy.
+- Both arms reached 100% training accuracy with near-zero final training
+  cross-entropy. The cold held-out accuracy was still fluctuating slightly in
+  the final epochs.
+
+The recorded held-out metric uses the reserved third of CIFAR-10's training
+set; this run did not evaluate on the official CIFAR-10 test split. The plotter
+`plot_small_resnet.py` produces `accuracy_curves.png` from `curves.csv`.
+Submit other seeds one at a time with `SEED=1 sbatch
+warm_start/run_small_resnet_izar.sh`, changing the seed as needed. Later
+candidates remain a linear
 softmax/factorized-linear control, a small tanh MLP, and a small Vision
 Transformer; do not include them in this first experiment.
 

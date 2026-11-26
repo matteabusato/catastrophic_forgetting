@@ -129,3 +129,12 @@ Run subsequent seeds one at a time by setting `SEED`:
 ```bash
 SEED=1 sbatch warm_start/run_small_resnet_izar.sh
 ```
+
+After the job completes, plot the training and held-out accuracy curves with:
+
+```bash
+python warm_start/plot_small_resnet.py
+```
+
+The plot is saved as
+`warm_start/outputs/small_resnet/seed_00/accuracy_curves.png` by default.
