@@ -138,3 +138,5 @@ python warm_start/plot_small_resnet.py
 
 The plot is saved as
 `warm_start/outputs/small_resnet/seed_00/accuracy_curves.png` by default.
+The cold curve is shifted to begin at epoch 350 for phase alignment with the
+warm arm's full-data phase; this is a plot alignment, not extra cold training.

@@ -16,7 +16,7 @@ COARSE_NAMES = [
     "medium-sized mammals", "non-insect invertebrates", "people", "reptiles", "small mammals",
     "trees", "vehicles 1", "vehicles 2",
 ]
-TASK_NAMES = {name.replace(" ", "_"): name for name in COARSE_NAMES}
+TASK_NAMES = {name.replace(" ", "_").replace("-", "_"): name for name in COARSE_NAMES}
 TRAINING_TASKS = ["aquatic_mammals", "fish", "large_carnivores", "small_mammals"]
 PROBE_TASKS = ["medium_sized_mammals", "vehicles_2"]
 MEAN = (0.5071, 0.4867, 0.4408)
@@ -68,7 +68,7 @@ def make_transforms():
 
 
 def task_id(name: str) -> int:
-    key = name.lower().replace(" ", "_")
+    key = name.lower().replace(" ", "_").replace("-", "_")
     if key not in TASK_NAMES:
         raise ValueError(f"Unknown CIFAR-100 coarse task {name!r}; choices: {sorted(TASK_NAMES)}")
     return COARSE_NAMES.index(TASK_NAMES[key])

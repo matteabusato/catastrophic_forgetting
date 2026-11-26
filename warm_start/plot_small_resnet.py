@@ -39,7 +39,10 @@ def main() -> None:
     series = (
         ("warm_start", "half_data", "Warm: half-data phase", "#165A91", "--"),
         ("warm_start", "full_data", "Warm: full-data phase", "#165A91", "-"),
-        ("cold_start", "full_data", "Cold: full-data training", "#E87500", "-"),
+        (
+            "cold_start", "full_data", "Cold: full-data training (aligned at 350)",
+            "#E87500", "-",
+        ),
     )
     for axis, metric, title in (
         (axes[0], "train_accuracy", "Training accuracy"),
@@ -53,13 +56,14 @@ def main() -> None:
             if not points:
                 continue
             points.sort(key=lambda row: int(row["total_epoch"]))
-            x = [int(row["total_epoch"]) for row in points]
+            x_offset = 350 if method == "cold_start" else 0
+            x = [int(row["total_epoch"]) + x_offset for row in points]
             y = [float(row[metric]) for row in points]
             axis.plot(x, y, label=label, color=color, linestyle=linestyle, linewidth=1.7)
 
         axis.axvline(350, color="0.45", linestyle=":", linewidth=1)
         axis.set_title(title)
-        axis.set_xlabel("Training epoch (warm total / cold total)")
+        axis.set_xlabel("Phase-aligned epoch (cold full-data phase starts at 350)")
         axis.set_ylabel("Accuracy")
         axis.set_ylim(0.0, 1.0)
         axis.grid(alpha=0.25)
