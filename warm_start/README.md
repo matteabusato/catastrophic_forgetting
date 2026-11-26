@@ -144,3 +144,43 @@ The plot is saved as
 `warm_start/outputs/small_resnet/seed_00/accuracy_curves.png` by default.
 The cold curve is shifted to begin at epoch 350 for phase alignment with the
 warm arm's full-data phase; this is a plot alignment, not extra cold training.
+
+## Architecture study: warm versus cold
+
+These four separate entrypoints compare a three-layer tanh MLP, a wider ReLU
+MLP, a plain convolutional network without skip connections, and a small
+patch-based Vision Transformer. Each uses the same CIFAR-10 training-set
+split, preprocessing, batch size, optimizer, and warm/cold schedule as the
+reduced-ResNet experiment: 350 epochs on half the fit split then 350 on all of
+it for warm start, versus 350 epochs on all fit data for cold start. The
+reserved third of the CIFAR-10 training set is held out for evaluation; it is
+not the official CIFAR-10 test set.
+
+Each script records per-epoch training and held-out cross-entropy and accuracy,
+learning rate, phase, and update counts in `curves.csv`; it also saves
+`run_config.json`, final checkpoints, and `summary.json` with final fit/held-out
+metrics and a flag showing whether the full fit split reached 100% training
+accuracy. Outputs are grouped under
+`warm_start/outputs/architecture_study/<model>/seed_XX/`.
+
+Submit seed 0 jobs one at a time from the repository root:
+
+```bash
+sbatch warm_start/run_tanh_mlp_izar.sh
+sbatch warm_start/run_wide_mlp_izar.sh
+sbatch warm_start/run_plain_cnn_izar.sh
+sbatch warm_start/run_tiny_vit_izar.sh
+```
+
+Set `SEED` for another seed, for example:
+
+```bash
+SEED=1 sbatch warm_start/run_tanh_mlp_izar.sh
+```
+
+The wide ReLU MLP replaces the raw-pixel linear-softmax candidate because the
+requested comparison should have enough capacity to fit the training split.
+Model capacity alone does not guarantee fitting within the fixed schedule;
+check `fit_reached_100_percent` in both endpoint summaries before treating a
+run as a matched-fit comparison. See `EXPERIMENT_LOG.md` for the rationale
+and current implementation status.

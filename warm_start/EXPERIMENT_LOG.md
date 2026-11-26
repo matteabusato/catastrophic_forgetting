@@ -186,6 +186,25 @@ also has its 350-epoch half-data phase, so the arms do not have equal total
 training examples or optimizer updates; report those counts and wall-clock
 times alongside generalization results.
 
+### Protocol comparison with the original ResNet-18 run
+
+The reduced-ResNet run keeps the core data and optimizer settings, but it is
+not an architecture-only comparison against the original multiseed run:
+
+- The original cold arm ran 700 full-data epochs; the reduced-ResNet cold arm
+  ran 350.
+- The original reproduction used seeds 0–4; the reduced-ResNet result is seed
+  0 only.
+- The original cold arm used sampler seed `seed + 403`; the reduced-ResNet cold
+  arm uses `seed + 402` to match the warm arm's full-data batch order.
+
+The seed-0 split, warm schedule, batch size, optimizer, learning rate, weight
+decay, loss, normalization, augmentation policy, initialization seed offsets,
+and warm-transition optimizer reset match. To attribute differences more
+cleanly to architecture while keeping the requested 350-epoch cold protocol,
+rerun the original ResNet-18 at seed 0 with 350 cold epochs and the same cold
+sampler seed before making a direct cross-architecture comparison.
+
 ### Decision after seed 0
 
 Compare endpoint held-out accuracy and loss, the full learning curves, and
@@ -215,13 +234,58 @@ The recorded held-out metric uses the reserved third of CIFAR-10's training
 set; this run did not evaluate on the official CIFAR-10 test split. The plotter
 `plot_small_resnet.py` produces `accuracy_curves.png` from `curves.csv`.
 Submit other seeds one at a time with `SEED=1 sbatch
-warm_start/run_small_resnet_izar.sh`, changing the seed as needed. Later
-candidates remain a linear
-softmax/factorized-linear control, a small tanh MLP, and a small Vision
-Transformer; do not include them in this first experiment.
+warm_start/run_small_resnet_izar.sh`, changing the seed as needed. The
+architecture candidates were revised after inspecting this result; see the
+architecture-study section below. The raw-pixel linear-softmax candidate was
+replaced with a wider nonlinear MLP at the user's request that each model be
+capable of fitting the training set.
 
 ## Update convention
 
 For each new run, add its date or run identifier, question, protocol changes,
 completion state, key metrics, and paths to the raw outputs or plots. Keep
 planned or code-only experiments distinct from runs with inspectable results.
+
+## Architecture study: four warm-versus-cold comparisons — code prepared
+
+Requested after the reduced-ResNet seed-0 result. The user asked to try four
+different architectures, retain the CIFAR-10 data and established metrics,
+and use models with enough capacity to fit the fit split. They selected a
+wider nonlinear replacement when informed that raw-pixel linear softmax is
+not a suitable full-fit candidate.
+
+Four independent Python entrypoints and four Izar SBATCH scripts are now in
+`warm_start/`:
+
+| Model | Python entrypoint | Izar script | Configuration |
+| --- | --- | --- | --- |
+| Three-layer tanh MLP | `run_tanh_mlp_experiment.py` | `run_tanh_mlp_izar.sh` | 2048, 2048 hidden units |
+| Wide ReLU MLP | `run_wide_mlp_experiment.py` | `run_wide_mlp_izar.sh` | 4096, 4096 hidden units |
+| Plain CNN | `run_plain_cnn_experiment.py` | `run_plain_cnn_izar.sh` | Four conv blocks, channels 32/64/128/256, no skip connections |
+| Tiny Vision Transformer | `run_tiny_vit_experiment.py` | `run_tiny_vit_izar.sh` | Patch size 4, width 256, depth 4, 8 attention heads |
+
+The shared implementation is `architecture_experiment_common.py`. It uses the
+same CIFAR-10 training-set partition and preprocessing as the reduced-ResNet
+run: a paired seeded two-thirds fit split and one-third held-out split,
+normalization to mean/std 0.5, no augmentation, batch size 128, Adam at
+`1e-3`, zero weight decay, and cross-entropy. Warm start runs 350 half-fit
+epochs then 350 full-fit epochs, resetting Adam state at the transition. Cold
+start runs 350 full-fit epochs. This is the reduced-ResNet schedule requested
+for the architecture comparison, not the original ResNet-18's 700-epoch cold
+arm.
+
+Each run saves the same principal metrics at every epoch: train and held-out
+cross-entropy and accuracy, learning rate, stage and total epoch, example and
+update counts, plus elapsed time. It also saves configuration, warm-half,
+warm-final, and cold-final checkpoints, and final train/held-out loss and
+accuracy in `summary.json`. Output root is
+`warm_start/outputs/architecture_study/<model>/seed_XX/`. The summary reports
+`fit_reached_100_percent` for each endpoint. The selected widths/depths are
+intended to provide ample capacity, but actual full fitting after this fixed
+schedule must be verified from that flag; no results exist until the jobs are
+run.
+
+The four SBATCH scripts default to seed 0 and request one GPU, 4 CPUs, 16 GB,
+and 24 hours. Submit each from the repository root. Other seeds can be
+submitted individually using `SEED=1 sbatch ...`. The architecture study has
+been implemented but not yet submitted or completed.
