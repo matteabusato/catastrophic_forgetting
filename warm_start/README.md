@@ -113,6 +113,16 @@ checkpoints every 50 epochs under
 continues at its final `1e-3` learning rate; warm and cold arms also continue at
 `1e-3`. See `EXPERIMENT_LOG.md` for study status and artifact prerequisites.
 
+After the job completes, plot mean train/held-out accuracy and cross-entropy
+across seeds, with standard-deviation bands, using:
+
+```bash
+python warm_start/plot_long_run.py
+```
+
+This reads `warm_start/outputs/long_run/trajectory_summary.csv` and saves
+`warm_start/outputs/long_run/long_run_metrics.png`.
+
 ## Reduced-depth ResNet experiment
 
 The self-contained `run_small_resnet_experiment.py` compares only warm and
@@ -177,6 +187,21 @@ Set `SEED` for another seed, for example:
 ```bash
 SEED=1 sbatch warm_start/run_tanh_mlp_izar.sh
 ```
+
+After a run completes, plot its train and held-out accuracy and cross-entropy
+from the saved `curves.csv` (activate the same environment with matplotlib):
+
+```bash
+python warm_start/plot_architecture_study.py --model three_layer_tanh_mlp --seed 0
+```
+
+Use `wide_relu_mlp`, `plain_cnn_no_skips`, or `tiny_vit_patch4` for the other
+models. The plot is saved as
+`warm_start/outputs/architecture_study/<model>/seed_XX/train_heldout_metrics.png`.
+The cold curve is shifted to start at epoch 350 to align with the warm
+full-data phase; this is a display alignment, not extra cold training. The
+held-out curves use the reserved third of the CIFAR-10 training set, not the
+official CIFAR-10 test set.
 
 The wide ReLU MLP replaces the raw-pixel linear-softmax candidate because the
 requested comparison should have enough capacity to fit the training split.

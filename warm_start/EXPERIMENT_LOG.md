@@ -287,5 +287,23 @@ run.
 
 The four SBATCH scripts default to seed 0 and request one GPU, 4 CPUs, 16 GB,
 and 24 hours. Submit each from the repository root. Other seeds can be
-submitted individually using `SEED=1 sbatch ...`. The architecture study has
-been implemented but not yet submitted or completed.
+submitted individually using `SEED=1 sbatch ...`. The four jobs were submitted
+as Slurm jobs `3266397`–`3266400`. The user reports that they have finished;
+exit states and result files have not yet been inspected in this workspace.
+Use `plot_architecture_study.py` to plot per-epoch train and held-out accuracy
+and cross-entropy from a selected model's `curves.csv`. The cold curve is
+phase-aligned at epoch 350 for plotting only. The held-out set is the reserved
+third of the CIFAR-10 training set, not the official test set.
+
+## Long-run convergence job status
+
+The long-run job `3265892` (`ws-long-run`) was still running alongside the
+architecture jobs in the last supplied queue snapshot. The user subsequently
+reports that all jobs have finished. This run continues the warm, cold, and
+LR-rewarmed arms for seeds 0–4 toward a shared 3,500 full-data epochs, logging
+per-epoch train/held-out losses and accuracies and learning rates. Its outputs
+and final Slurm state have not yet been inspected here; see
+`outputs/long_run/` and the long-run section above for expected files.
+Once `trajectory_summary.csv` is present, `plot_long_run.py` saves the
+across-seed train/held-out accuracy and cross-entropy plots to
+`outputs/long_run/long_run_metrics.png` with standard-deviation bands.
