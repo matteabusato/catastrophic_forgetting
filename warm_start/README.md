@@ -120,7 +120,10 @@ across seeds, with standard-deviation bands, using:
 python warm_start/plot_long_run.py
 ```
 
-This reads `warm_start/outputs/long_run/trajectory_summary.csv` and saves
+This reads `trajectory_summary.csv` when available, otherwise aggregates the
+per-seed `curves.csv` files. If only `summary_across_seeds.csv` exists, it
+plots the saved endpoint means and standard deviations instead of full
+trajectories. The output is
 `warm_start/outputs/long_run/long_run_metrics.png`.
 
 ## Reduced-depth ResNet experiment

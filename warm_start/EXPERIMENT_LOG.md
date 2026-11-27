@@ -304,6 +304,7 @@ LR-rewarmed arms for seeds 0–4 toward a shared 3,500 full-data epochs, logging
 per-epoch train/held-out losses and accuracies and learning rates. Its outputs
 and final Slurm state have not yet been inspected here; see
 `outputs/long_run/` and the long-run section above for expected files.
-Once `trajectory_summary.csv` is present, `plot_long_run.py` saves the
-across-seed train/held-out accuracy and cross-entropy plots to
-`outputs/long_run/long_run_metrics.png` with standard-deviation bands.
+`plot_long_run.py` plots trajectories from `trajectory_summary.csv` or from
+per-seed curves; if only `summary_across_seeds.csv` is available, it plots the
+saved endpoint means and standard deviations instead. Output:
+`outputs/long_run/long_run_metrics.png`.
